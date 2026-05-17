@@ -54,7 +54,7 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     display: flex;
     align-items: center;
     position: relative;
-    overflow: visible;
+    overflow: hidden;
   }
   .hero::before {
     content: '';
@@ -246,9 +246,9 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
   /* ---- Product Card ---- */
   .prod-card {
     background: var(--white);
-    border-radius: var(--radius-lg);
+    border-radius: 24px;
     border: 1px solid var(--border);
-    overflow: visible;
+    overflow: hidden;
     height: 100%;
     transition: transform .25s, box-shadow .25s;
     position: relative;
@@ -257,7 +257,12 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     transform: translateY(-6px);
     box-shadow: 0 18px 40px rgba(26,60,46,.14);
   }
-  .prod-card__img-wrap { position: relative; overflow: visible; }
+  .prod-card__img-wrap { 
+    position: relative; 
+    overflow: hidden;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+  }
   .prod-card__img {
     width: 100%; height: 210px;
     object-fit: cover;
@@ -308,7 +313,7 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
-    overflow: visible;
+    overflow: hidden;
   }
   .prod-card__desc {
     font-size: .8rem;
@@ -318,7 +323,7 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
-    overflow: visible;
+    overflow: hidden;
     min-height: 2.4em;
   }
   .prod-card__footer {
@@ -407,14 +412,9 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     box-shadow: var(--shadow-md);
   }
   .why-card__icon {
-      font-size: 2.5rem;
-      color: var(--primary);
-      display: inline-block;
-      margin-bottom: 1rem;
-      transition: transform 0.2s;
-  }
-  .why-card:hover .why-card__icon {
-      transform: scale(1.05);
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    display: block;
   }
   .why-card h5 {
     font-size: 1rem;
