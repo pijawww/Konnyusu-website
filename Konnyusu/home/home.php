@@ -54,7 +54,7 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     display: flex;
     align-items: center;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
   }
   .hero::before {
     content: '';
@@ -133,13 +133,51 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     align-items: center;
     position: relative;
   }
+  
   .hero__ring {
-    width: 360px; height: 360px;
+    width: 420px;
+    height: 420px;
+
     border-radius: 50%;
-    background: rgba(255,255,255,.06);
-    border: 1px solid rgba(255,255,255,.12);
-    display: flex; align-items: center; justify-content: center;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: visible;
+
+    background: rgba(255,255,255,.08);
+    backdrop-filter: blur(10px);
+
+    border: 6px solid rgba(255,255,255,.15);
+
+    box-shadow:
+      0 20px 60px rgba(0,0,0,.18),
+      inset 0 0 40px rgba(255,255,255,.08);
+
     position: relative;
+  }
+
+  .hero__ring-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+
+    border-radius: 50%;
+
+    animation: floatHero 4s ease-in-out infinite;
+  }
+
+  @keyframes floatHero {
+    0% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+    100% {
+      transform: translateY(0px);
+    }
   }
   .hero__ring::before {
     content: '';
@@ -165,7 +203,7 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
   .hero__stats strong { display: block; font-size: 1.1rem; color: var(--primary); font-weight: 700; }
   .hero__stats span   { color: var(--text-muted); font-size: .75rem; }
   .hero__stats--left  { left: -10px; top: 80px; }
-  .hero__stats--right { right: -10px; bottom: 80px; }
+  .hero__stats--right {top: 60px; left: -10px; right: auto; bottom: auto; }
 
   @keyframes float {
     0%,100% { transform: translateY(0); }
@@ -210,7 +248,7 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     background: var(--white);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border);
-    overflow: hidden;
+    overflow: visible;
     height: 100%;
     transition: transform .25s, box-shadow .25s;
     position: relative;
@@ -219,7 +257,7 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     transform: translateY(-6px);
     box-shadow: 0 18px 40px rgba(26,60,46,.14);
   }
-  .prod-card__img-wrap { position: relative; overflow: hidden; }
+  .prod-card__img-wrap { position: relative; overflow: visible; }
   .prod-card__img {
     width: 100%; height: 210px;
     object-fit: cover;
@@ -270,7 +308,7 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
-    overflow: hidden;
+    overflow: visible;
   }
   .prod-card__desc {
     font-size: .8rem;
@@ -280,7 +318,7 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
-    overflow: hidden;
+    overflow: visible;
     min-height: 2.4em;
   }
   .prod-card__footer {
@@ -331,7 +369,7 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     border-radius: var(--radius-lg);
     padding: 2.5rem 2rem;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -369,9 +407,14 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     box-shadow: var(--shadow-md);
   }
   .why-card__icon {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-    display: block;
+      font-size: 2.5rem;
+      color: var(--primary);
+      display: inline-block;
+      margin-bottom: 1rem;
+      transition: transform 0.2s;
+  }
+  .why-card:hover .why-card__icon {
+      transform: scale(1.05);
   }
   .why-card h5 {
     font-size: 1rem;
@@ -451,11 +494,10 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
 
       <div class="col-lg-6 hero__image-wrap">
         <div class="hero__ring">
-          <span class="hero__cup-emoji">☕</span>
-          <div class="hero__stats hero__stats--left">
-            <strong>4.9 ★</strong>
-            <span>Rating rata-rata</span>
-          </div>
+          <img src="../assets/img/hero-image.png"
+              alt="Hero Image"
+              class="hero__ring-img">
+
           <div class="hero__stats hero__stats--right">
             <strong>1.200+</strong>
             <span>Pesanan / hari</span>
@@ -510,7 +552,6 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
         'coffee'     => ['icon' => 'bi-cup-hot-fill',   'label' => 'Kopi'],
         'non-coffee' => ['icon' => 'bi-cup-straw',      'label' => 'Non Kopi'],
         'tea'        => ['icon' => 'bi-flower1',        'label' => 'Teh'],
-        'dessert'    => ['icon' => 'bi-cake2',          'label' => 'Dessert'],
       ];
       foreach ($cats as $key => $info):
         $isActive = ($activecat === $key) ? 'active' : '';
@@ -597,67 +638,21 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     <div class="row g-4">
       <?php
       $whys = [
-        ['☕', 'Biji Kopi Premium',   'Single origin arabika dan robusta pilihan dari perkebunan terbaik Nusantara.'],
-        ['⚡', 'Pesanan Cepat',       'Siap saji dalam 5 menit, pengiriman ke lokasi Anda sebelum Anda duduk.'],
-        ['🛡️', 'Kualitas Terjamin',   'Barista bersertifikat internasional mengerjakan setiap pesanan dengan standar tertinggi.'],
-        ['💚', 'Ramah Lingkungan',    'Kemasan biodegradable dan sumber bahan baku yang berkelanjutan.'],
-        ['💳', 'Pembayaran Mudah',    'Dukung QRIS, transfer bank, dan semua metode pembayaran digital populer.'],
-        ['🎁', 'Reward Program',      'Kumpulkan poin setiap pembelian dan tukar dengan minuman gratis pilihan.'],
+          ['bi-cup-hot-fill', 'Biji Kopi Premium', 'Single origin arabika dan robusta pilihan dari perkebunan terbaik Nusantara.'],
+          ['bi-lightning-charge-fill', 'Pesanan Cepat', 'Siap saji dalam 5 menit, pengiriman ke lokasi Anda sebelum Anda duduk.'],
+          ['bi-shield-check', 'Kualitas Terjamin', 'Barista bersertifikat internasional mengerjakan setiap pesanan dengan standar tertinggi.'],
+          ['bi-tree-fill', 'Ramah Lingkungan', 'Kemasan biodegradable dan sumber bahan baku yang berkelanjutan.'],
+          ['bi-credit-card', 'Pembayaran Mudah', 'Dukung QRIS, transfer bank, dan semua metode pembayaran digital populer.'],
+          ['bi-gift-fill', 'Reward Program', 'Kumpulkan poin setiap pembelian dan tukar dengan minuman gratis pilihan.'],
       ];
       foreach ($whys as $i => $w):
         $delay = ($i % 3) * 100;
       ?>
       <div class="col-12 col-sm-6 col-md-4 scroll-reveal" style="transition-delay:<?= $delay ?>ms">
         <div class="why-card">
-          <span class="why-card__icon"><?= $w[0] ?></span>
+          <i class="bi <?= $w[0] ?> why-card__icon"></i>
           <h5><?= $w[1] ?></h5>
           <p><?= $w[2] ?></p>
-        </div>
-      </div>
-      <?php endforeach; ?>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<!--  TESTIMONIALS                                                 -->
-<!-- ============================================================ -->
-<section class="section">
-  <div class="container">
-    <div class="text-center mb-5 scroll-reveal">
-      <div class="section-label">Ulasan Pelanggan</div>
-      <h2 class="section-title">Apa Kata Mereka?</h2>
-    </div>
-    <div class="row g-4">
-      <?php
-      $testimonials = [
-        ['Rani P.',     'Jakarta',   5, 'Caramel Tart Latte-nya beneran beda! Rasa karamelnya tidak terlalu manis, pas banget untuk pagi hari sebelum meeting.'],
-        ['Bagas S.',    'Surabaya',  5, 'Oat Latte favorit saya sekarang. Barista Konnyusu paham betul bagaimana menyeduh yang sempurna. Pesanan datang tepat waktu!'],
-        ['Dinda M.',    'Bandung',   5, 'Matcha grade-nya terasa banget autentiknya. Beda jauh sama tempat lain. Croissant-nya juga worth it banget.'],
-      ];
-      foreach ($testimonials as $t):
-      ?>
-      <div class="col-md-4 scroll-reveal">
-        <div class="k-card p-4 h-100">
-          <div class="d-flex gap-1 mb-3">
-            <?php for($s=0;$s<$t[2];$s++): ?>
-              <i class="bi bi-star-fill text-warning" style="font-size:.85rem;"></i>
-            <?php endfor; ?>
-          </div>
-          <p style="font-size:.9rem;color:var(--text-mid);line-height:1.65;margin-bottom:1.25rem;">
-            "<?= $t[3] ?>"
-          </p>
-          <div class="d-flex align-items-center gap-2">
-            <div style="width:38px;height:38px;border-radius:50%;background:var(--primary);
-                        display:flex;align-items:center;justify-content:center;
-                        color:#fff;font-weight:700;font-size:.85rem;flex-shrink:0;">
-              <?= $t[0][0] ?>
-            </div>
-            <div>
-              <div style="font-weight:700;font-size:.88rem;color:var(--primary);"><?= $t[0] ?></div>
-              <div style="font-size:.75rem;color:var(--text-muted);"><?= $t[1] ?></div>
-            </div>
-          </div>
         </div>
       </div>
       <?php endforeach; ?>

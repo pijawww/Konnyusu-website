@@ -14,9 +14,11 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
   <div class="kny-navbar__container">
 
     <!-- Logo -->
-    <a href="../home/home.php" class="kny-navbar__brand">
-      <span class="kny-navbar__logo-icon">☕</span>
-      <span class="kny-navbar__logo-text">Konnyusu</span>
+    <a class="navbar-brand d-flex align-items-center gap-2" href="../home/home.php">
+      <img src="../assets/img/logo.jpeg"
+           alt="Konnyusu Logo"
+           style="height:58px;width:auto;object-fit:contain;">
+      </span>
     </a>
 
     <!-- Search Bar (desktop) -->
@@ -78,21 +80,51 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
 <style>
 /* ===================== NAVBAR STYLES ===================== */
 .kny-navbar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  width: 100%;
+
   z-index: 1000;
-  background: var(--white);
-  border-bottom: 1px solid var(--border);
-  box-shadow: 0 2px 16px rgba(26,60,46,.07);
+
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+
+  box-shadow: 0 4px 30px rgba(0,0,0,.08);
 }
+.page-wrapper {
+  padding-top: 78px;
+}
+.kny-navbar__link {
+  color: white;
+}
+
+.kny-navbar__link:hover,
+.kny-navbar__link.active {
+  color: #f0cb7a;
+  background: rgba(255,255,255,.08);
+}
+
+.kny-navbar__cart,
+.kny-navbar__toggle span {
+  color: white;
+  background: white;
+}
+
 .kny-navbar__container {
-  max-width: 1280px;
+  width: 100%;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0 1.5rem;
-  height: 68px;
+  padding: 0 2.5rem;
+  height: 78px;
+
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  justify-content: space-between;
+  gap: 2rem;
 }
 .kny-navbar__brand {
   display: flex;
@@ -222,6 +254,20 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
   .kny-navbar__toggle { display: flex; }
   .kny-navbar__mobile.open { display: block; border-top: 1px solid var(--border); }
   .kny-navbar__search--mobile { display: flex; }
+}
+.kny-navbar__search {
+  flex: 1;
+  max-width: 520px;
+}
+@media (max-width: 900px) {
+  .kny-navbar__container {
+    padding: 0 1rem;
+    height: 72px;
+  }
+
+  .navbar-brand img {
+    height: 48px !important;
+  }
 }
 </style>
 

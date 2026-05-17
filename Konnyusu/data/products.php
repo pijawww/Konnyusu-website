@@ -68,28 +68,7 @@ $products = [
         'is_new'      => true,
         'is_best'     => false,
     ],
-    [
-        'id'          => 7,
-        'name'        => 'Caramel Tart',
-        'price'       => 18000,
-        'category'    => 'dessert',
-        'image'       => 'caramel-tart.jpeg',
-        'description' => 'Pastri karamel lembut dengan lapisan custard krem yang kaya. Cocok menemani kopi pagi.',
-        'sold'        => 201,
-        'is_new'      => false,
-        'is_best'     => false,
-    ],
-    [
-        'id'          => 8,
-        'name'        => 'Savory Croissant',
-        'price'       => 22000,
-        'category'    => 'dessert',
-        'image'       => 'savory.jpg',
-        'description' => 'Croissant renyah berlapis mentega premium dengan isian keju edam dan ham smoke.',
-        'sold'        => 178,
-        'is_new'      => false,
-        'is_best'     => false,
-    ],
+    
 ];
 
 /**

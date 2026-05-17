@@ -5,7 +5,9 @@
 
     <div class="kny-footer__brand">
       <a href="../home/home.php" class="kny-footer__logo">
-        <span>☕</span> Konnyusu
+        <img src="../assets/img/logo.jpeg"
+            alt="Konnyusu Logo"
+            class="footer-logo">
       </a>
       <p class="kny-footer__tagline">
         Dari biji pilihan ke cangkir Anda —<br>rasakan kehangatan dalam setiap tegukan.
@@ -138,5 +140,16 @@
 @media (max-width: 576px) {
   .kny-footer__container { grid-template-columns: 1fr; gap: 1.5rem; }
   .kny-footer__bottom { flex-direction: column; gap: .25rem; text-align: center; }
+}
+.kny-footer__logo{
+  display:flex;
+  align-items:center;
+  text-decoration:none;
+}
+
+.footer-logo{
+  height:70px;
+  width:auto;
+  object-fit:contain;
 }
 </style>
