@@ -1,0 +1,208 @@
+/* ============================================
+   KONNYUSU - Global Stylesheet
+   Platform E-Commerce Pemesanan Minuman
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Brand Colors */
+  --primary:        #2c6e9e;
+  --primary-light:  #4a8ec2;
+  --accent:         #f5b342; 
+  --accent-light:   #f7cc7a;
+  --cream:          #fefcf8;
+  --cream-dark:     #f2efe8;
+  --text-dark:      #2c3e2f;
+  --text-mid:       #5a6b5a;
+  --text-muted:     #9bb0a0;
+  --white:          #ffffff;
+  --danger:         #e05252;
+  --success:        #3b9e7c;  
+  --border:         #e8e2d9;
+
+  /* Spacing */
+  --radius-sm:  8px;
+  --radius-md:  16px;
+  --radius-lg:  24px;
+  --radius-xl:  36px;
+
+  /* Shadows */
+  --shadow-sm:  0 2px 8px rgba(26,60,46,.08);
+  --shadow-md:  0 8px 24px rgba(26,60,46,.12);
+  --shadow-lg:  0 20px 48px rgba(26,60,46,.16);
+
+  /* Typography */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body:    'DM Sans', system-ui, sans-serif;
+}
+
+/* ---- Reset & Base ---- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--cream);
+  color: var(--text-dark);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,h2,h3,h4,h5,h6 {
+  font-family: var(--font-display);
+  color: var(--primary);
+}
+
+a { text-decoration: none; color: inherit; transition: color .2s; }
+
+img { max-width: 100%; display: block; }
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--cream-dark); }
+::-webkit-scrollbar-thumb { background: var(--primary-light); border-radius: 4px; }
+
+/* ---- Utility ---- */
+.text-accent   { color: var(--accent) !important; }
+.text-primary-brand { color: var(--primary) !important; }
+.bg-primary-brand   { background: var(--primary) !important; }
+.bg-accent          { background: var(--accent) !important; }
+.bg-cream           { background: var(--cream) !important; }
+
+/* ---- Buttons ---- */
+.btn-brand {
+  background: var(--primary);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-xl);
+  padding: .65rem 1.5rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: .9rem;
+  cursor: pointer;
+  transition: background .2s, transform .15s, box-shadow .2s;
+}
+.btn-brand:hover {
+  background: var(--primary-light);
+  color: var(--white);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(26,60,46,.25);
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: var(--primary);
+  border: none;
+  border-radius: var(--radius-xl);
+  padding: .65rem 1.5rem;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: .9rem;
+  cursor: pointer;
+  transition: background .2s, transform .15s, box-shadow .2s;
+}
+.btn-accent:hover {
+  background: var(--accent-light);
+  color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(212,168,83,.3);
+}
+
+.btn-outline-brand {
+  background: transparent;
+  color: var(--primary);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-xl);
+  padding: .6rem 1.4rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: .9rem;
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn-outline-brand:hover {
+  background: var(--primary);
+  color: var(--white);
+}
+
+/* ---- Section Titles ---- */
+.section-label {
+  font-family: var(--font-body);
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: .5rem;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.2;
+}
+
+/* ---- Card Base ---- */
+.k-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: transform .2s, box-shadow .2s;
+}
+.k-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ---- Badge ---- */
+.k-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  padding: .2rem .7rem;
+  border-radius: var(--radius-xl);
+  font-size: .72rem;
+  font-weight: 600;
+}
+.k-badge-accent   { background: #fff8ec; color: var(--accent); border: 1px solid #f0cb7a; }
+.k-badge-green    { background: #ecfaf4; color: var(--success); border: 1px solid #a3e0c8; }
+.k-badge-red      { background: #fdf0f0; color: var(--danger);  border: 1px solid #f5b8b8; }
+.k-badge-gray     { background: #f4f4f4; color: var(--text-muted); border: 1px solid var(--border); }
+
+/* ---- Divider ---- */
+.k-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5rem 0;
+}
+
+/* ---- Page wrapper ---- */
+.page-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.page-content { flex: 1; }
+
+/* ---- Animations ---- */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-fadeup  { animation: fadeUp .5s ease both; }
+.animate-fadein  { animation: fadeIn .4s ease both; }
+
+/* ---- Responsive helpers ---- */
+@media (max-width: 768px) {
+  .section-title { font-size: 1.5rem; }
+}
