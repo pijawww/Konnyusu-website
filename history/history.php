@@ -31,7 +31,10 @@ foreach ($ordersData as $ord) {
             'name' => $oi['name'] ?? 'Produk',
             'qty' => $oi['quantity'],
             'price' => $oi['price'],
-            'image' => $oi['image'] ?? ''
+            'image' => $oi['image'] ?? '',
+            'sugar_level' => $oi['sugar_level'] ?? 'normal',
+            'ice_level' => $oi['ice_level'] ?? 'normal',
+            'menu_id' => $oi['menu_id']
         ];
     }
     
@@ -212,7 +215,10 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
       </div>
 
       <div class="order-card__body">
-        <?php foreach ($order['items'] as $item): ?>
+        <?php foreach ($order['items'] as $item): 
+          $sugarLabel = $item['sugar_level'] === 'less' ? 'Less Sugar' : 'Normal';
+          $iceLabel = $item['ice_level'] === 'less' ? 'Less Ice' : 'Normal';
+        ?>
         <div class="order-item">
           <img src="../assets/img/products/<?= $item['image'] ?>"
                class="order-item__img"
@@ -220,6 +226,11 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
           <div>
             <div class="order-item__name"><?= htmlspecialchars($item['name']) ?></div>
             <div class="order-item__meta">x<?= $item['qty'] ?> &bull; <?= formatRupiah($item['price']) ?>/item</div>
+            <div class="order-item__meta" style="font-size:.7rem;color:var(--text-muted);">
+              <i class="bi bi-droplet-half"></i> Gula: <?= $sugarLabel ?> 
+              <span class="mx-2">•</span>
+              <i class="bi bi-snow2"></i> Es: <?= $iceLabel ?>
+            </div>
           </div>
           <div class="order-item__price"><?= formatRupiah($item['price'] * $item['qty']) ?></div>
         </div>

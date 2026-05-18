@@ -77,9 +77,9 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
           </a>
         </div>
       <?php endif; ?>
-      <a href="../cart/cart.php" class="kny-navbar__cart" title="Keranjang">
+      <a href="<?= $currentUser ? '../cart/cart.php' : '../auth/login.php' ?>" class="kny-navbar__cart" title="Keranjang">
         <i class="bi bi-bag"></i>
-        <?php if ($cartTotalItems > 0): ?>
+        <?php if ($currentUser && $cartTotalItems > 0): ?>
           <span class="kny-navbar__cart-badge"><?= $cartTotalItems ?></span>
         <?php endif; ?>
       </a>

@@ -1,8 +1,11 @@
 <?php
 // cart/cart.php
 session_start();
+require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/cart.php';
 include __DIR__ . '/../data/products.php';
+
+requireLogin();
 
 $cartItems = getCartItems();
 $subtotal  = getCartTotal();

@@ -2,7 +2,10 @@
 // home/home.php
 session_start();
 require_once __DIR__ . '/../config/cart.php';
+require_once __DIR__ . '/../config/auth.php';
 include __DIR__ . '/../data/products.php';
+
+$currentUser = getCurrentUser();
 
 // Cart count
 $cartTotalItems = getCartCount();
@@ -655,6 +658,24 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
   </div>
 </section>
 
+<!-- Login Warning Modal -->
+<div class="modal fade" id="loginWarningModal" tabindex="-1" aria-hidden="true" style="z-index:1060;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:20px;overflow:hidden;border:none;">
+      <div class="modal-body p-4 text-center">
+        <div style="width:70px;height:70px;background:#fff8ec;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;"><i class="bi bi-exclamation-triangle-fill" style="font-size:2rem;color:var(--accent);"></i></div>
+        <h5 style="font-family:var(--font-display);font-weight:800;color:var(--primary);margin-bottom:.5rem;">Silakan Login Terlebih Dahulu</h5>
+        <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.5rem;">Untuk memesan produk, Anda harus login atau mendaftar akun terlebih dahulu.</p>
+        <div class="d-flex gap-2 justify-content-center">
+          <a href="../auth/login.php" class="btn-brand" style="text-decoration:none;padding:.6rem 1.2rem;">Masuk</a>
+          <a href="../auth/register.php" class="btn-outline-brand" style="text-decoration:none;padding:.6rem 1.2rem;">Daftar</a>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="position:absolute;top:1rem;right:1rem;"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Product Modal -->
 <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -798,11 +819,28 @@ function addToCart() {
   form.submit();
 }
 
+const isLoggedIn = <?= !empty($currentUser) ? 'true' : 'false' ?>;
+const loginWarningModal = new bootstrap.Modal('#loginWarningModal');
+
 document.getElementById('btnAddToCart').addEventListener('click', () => {
+  if (!isLoggedIn) {
+    productModal.hide();
+    setTimeout(() => {
+      loginWarningModal.show();
+    }, 150);
+    return;
+  }
   addToCart();
 });
 
 document.getElementById('btnBuyNow').addEventListener('click', () => {
+  if (!isLoggedIn) {
+    productModal.hide();
+    setTimeout(() => {
+      loginWarningModal.show();
+    }, 150);
+    return;
+  }
   addToCart();
 });
 
