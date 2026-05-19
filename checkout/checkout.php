@@ -9,20 +9,71 @@ include __DIR__ . '/../data/products.php';
 // Require login
 requireLogin();
 
-$cartItems = getCartItems();
-$subtotal  = getCartTotal();
-$deliveryFee = $subtotal >= 50000 ? 0 : 5000;
+// Get selected items or all cart items
+$allCartItems = getCartItems();
+$selectedItemsIds = [];
+
+if (isset($_POST['selected_items']) && !empty($_POST['selected_items'])) {
+    $selectedItemsIds = explode(',', $_POST['selected_items']);
+    $selectedItemsIds = array_map('intval', $selectedItemsIds);
+}
+
+// Filter cart items to only selected ones
+$cartItems = [];
+if (!empty($selectedItemsIds)) {
+    foreach ($allCartItems as $item) {
+        $itemId = isset($item['cart_item_id']) ? (int)$item['cart_item_id'] : (int)$item['id'];
+        if (in_array($itemId, $selectedItemsIds)) {
+            $cartItems[] = $item;
+        }
+    }
+} else {
+    $cartItems = $allCartItems;
+}
+
+// Calculate totals based on selected items
+$subtotal = 0;
+foreach ($cartItems as $item) {
+    $subtotal += $item['price'] * $item['quantity'];
+}
+$deliveryMethodNames = [
+    'priority' => 'Prioritas (< 20 menit)',
+    'standard' => 'Standar (30 menit)',
+    'pickup' => 'Ambil Sendiri'
+];
+$deliveryMethodBaseFees = [
+    'priority' => 8000,
+    'standard' => 5000,
+    'pickup' => 0
+];
+$paymentMethodNames = [
+    'qris' => 'QRIS',
+    'gopay' => 'GoPay',
+    'ovo' => 'OVO',
+    'dana' => 'DANA',
+    'bca' => 'BCA Transfer',
+    'cod' => 'Bayar di Tempat'
+];
+$defaultDeliveryMethod = 'standard';
+
+// Calculate delivery fee - free if subtotal >= 50000 and not pickup
+$baseDeliveryFee = $deliveryMethodBaseFees[$defaultDeliveryMethod];
+$deliveryFee = ($subtotal >= 50000) ? 0 : $baseDeliveryFee;
+
 $tax         = (int)round($subtotal * 0.01);
 $total       = $subtotal + $deliveryFee + $tax;
-$cartTotalItems = getCartCount();
+$cartTotalItems = 0;
+foreach ($cartItems as $item) {
+    $cartTotalItems += $item['quantity'];
+}
 
 $currentUser = getCurrentUser();
 $orderSuccess = false;
 $orderId = null;
 
 // Handle order submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($cartItems)) {
-    $orderType = $_POST['delivery'] === 'pickup' ? 'takeaway' : 'delivery';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'place_order' && !empty($cartItems)) {
+    $orderType = $_POST['delivery'] ?? $defaultDeliveryMethod;
     $notes = trim($_POST['note'] ?? '');
     $paymentMethod = $_POST['payment'] ?? 'qris';
     
@@ -41,10 +92,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($cartItems)) {
         ];
     }
     
-    $orderId = createOrder($currentUser['user_id'], $orderItems, $orderType, $notes, $paymentMethod);
-    
+    $recipientData = [
+        'name' => $_POST['name'] ?? '',
+        'phone' => $_POST['phone'] ?? '',
+        'address' => $_POST['address'] ?? '',
+        'city' => $_POST['city'] ?? '',
+        'postal' => $_POST['postal'] ?? ''
+    ];
+    $orderId = createOrder($currentUser['user_id'], $orderItems, $orderType, $notes, $paymentMethod, $recipientData);
+
     if ($orderId) {
-        clearCart();
+        // Clear only selected items from cart (both session and database)
+        if (!empty($selectedItemsIds)) {
+            foreach ($selectedItemsIds as $itemId) {
+                removeFromCart($itemId);
+            }
+        } else {
+            clearCart();
+        }
         $orderSuccess = true;
     }
 }
@@ -164,6 +229,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($cartItems)) {
     </div>
 
     <form method="POST" action="" id="checkoutForm">
+      <input type="hidden" name="action" value="place_order">
+      <input type="hidden" name="selected_items" value="<?= isset($_POST['selected_items']) ? htmlspecialchars($_POST['selected_items']) : '' ?>">
 
       <!-- 1. Informasi Penerima -->
       <div class="section-card animate-fadeup">
@@ -216,14 +283,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($cartItems)) {
         <div class="section-card__body">
           <?php
           $deliveries = [
-            ['instant','⚡','Instant (< 1 jam)','Rp 8.000','Pengiriman kilat ke lokasi Anda'],
-            ['same_day','🏍️','Same Day','Rp 5.000','Tiba di hari yang sama'],
+            ['priority','⚡','Prioritas (< 20 menit)','Rp 8.000','Pesanan diprioritaskan dan dikirim lebih cepat'],
+            ['standard','🛵','Standar (30 menit)','Rp 5.000','Estimasi pengantaran reguler sekitar 30 menit'],
             ['pickup','🏪','Ambil Sendiri','Gratis','Ambil langsung di gerai terdekat'],
           ];
           foreach ($deliveries as $i => $d):
           ?>
           <label style="display:flex;align-items:center;gap:1rem;padding:.85rem 1rem;border:1.5px solid var(--border);border-radius:var(--radius-md);cursor:pointer;margin-bottom:.65rem;transition:all .2s;" class="delivery-opt">
-            <input type="radio" name="delivery" value="<?= $d[0] ?>" <?= $i===1?'checked':'' ?> style="accent-color:var(--primary);">
+            <input type="radio" name="delivery" value="<?= $d[0] ?>" <?= $d[0] === $defaultDeliveryMethod ? 'checked' : '' ?> style="accent-color:var(--primary);">
             <span style="font-size:1.5rem;"><?= $d[1] ?></span>
             <div style="flex:1;">
               <div style="font-weight:700;font-size:.9rem;color:var(--primary);"><?= $d[2] ?></div>
@@ -297,13 +364,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($cartItems)) {
 
       <hr class="k-divider">
 
+      <div class="summary-row" id="deliveryMethodRow">
+        <span>Metode Pengiriman</span>
+        <span id="deliveryMethodText" style="font-weight:600;color:var(--primary);"><?= $deliveryMethodNames[$defaultDeliveryMethod] ?></span>
+      </div>
+
+      <div class="summary-row" id="paymentMethodRow" style="display:none;">
+        <span>Metode Pembayaran</span>
+        <span id="paymentMethodText" style="font-weight:600;color:var(--primary);"></span>
+      </div>
+
       <div class="summary-row"><span>Subtotal</span><span><?= formatRupiah($subtotal) ?></span></div>
       <div class="summary-row">
         <span>Ongkos Kirim</span>
-        <span><?= $deliveryFee === 0 ? '<span style="color:var(--success)">Gratis</span>' : formatRupiah($deliveryFee) ?></span>
+        <span id="deliveryFeeSummary"><?= $deliveryFee === 0 ? 'Gratis' : formatRupiah($deliveryFee) ?></span>
       </div>
-      <div class="summary-row"><span>Pajak (1%)</span><span><?= formatRupiah($tax) ?></span></div>
-      <div class="summary-row total"><span>Total Bayar</span><span><?= formatRupiah($total) ?></span></div>
+      <div class="summary-row"><span>Pajak (1%)</span><span id="taxSummary"><?= formatRupiah($tax) ?></span></div>
+      <div class="summary-row total"><span>Total Bayar</span><span id="totalSummary"><?= formatRupiah($total) ?></span></div>
 
       <button type="submit" form="checkoutForm" class="btn-place">
         <i class="bi bi-lock-fill"></i> Pesan Sekarang
@@ -333,6 +410,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($cartItems)) {
     </p>
     <div style="background:var(--cream);border-radius:var(--radius-md);padding:1rem;margin-bottom:1.5rem;font-size:.85rem;">
       <div style="display:flex;justify-content:space-between;margin-bottom:.4rem;">
+        <span style="color:var(--text-muted);">Metode Pembayaran</span>
+        <strong style="color:var(--primary);">
+          <?= htmlspecialchars($paymentMethodNames[$paymentMethod] ?? $paymentMethod) ?>
+        </strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:.4rem;">
         <span style="color:var(--text-muted);">Total Bayar</span>
         <strong style="color:var(--primary);"><?= formatRupiah($total) ?></strong>
       </div>
@@ -353,16 +436,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($cartItems)) {
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// Delivery option highlight
+// Helper function format rupiah
+function formatRupiah(angka) {
+  return 'Rp ' + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+// Delivery fees configuration
+const deliveryFees = {
+  'priority': 8000,
+  'standard': 5000,
+  'pickup': 0
+};
+
+// Payment method names
+const paymentMethodNames = {
+  'qris': 'QRIS',
+  'gopay': 'GoPay',
+  'ovo': 'OVO',
+  'dana': 'DANA',
+  'bca': 'BCA Transfer',
+  'cod': 'Bayar di Tempat'
+};
+
+// Update summary based on selections
+function updateSummary() {
+  const subtotal = <?= $subtotal ?>;
+  
+  // Get selected delivery method and its fee
+  const selectedDelivery = document.querySelector('.delivery-opt input:checked');
+  const deliveryMethod = selectedDelivery ? selectedDelivery.value : 'same_day';
+  let deliveryFee = deliveryFees[deliveryMethod];
+  
+  // Apply free delivery if subtotal >= 50000 and not pickup
+  if (subtotal >= 50000 && deliveryMethod !== 'pickup') {
+    deliveryFee = 0;
+  }
+  
+  // Calculate tax and total
+  const tax = Math.round(subtotal * 0.01);
+  const total = subtotal + deliveryFee + tax;
+  
+  // Update delivery fee in UI
+  const deliveryFeeEl = document.getElementById('deliveryFeeSummary');
+  if (deliveryFee === 0) {
+    deliveryFeeEl.innerHTML = '<span style="color:var(--success)">Gratis</span>';
+  } else {
+    deliveryFeeEl.textContent = formatRupiah(deliveryFee);
+  }
+  
+  // Update tax and total
+  document.getElementById('taxSummary').textContent = formatRupiah(tax);
+  document.getElementById('totalSummary').textContent = formatRupiah(total);
+}
+
+// Update payment method display
+function updatePaymentDisplay() {
+  const selectedPayment = document.querySelector('.payment-option:checked');
+  if (selectedPayment) {
+    const paymentMethod = selectedPayment.value;
+    document.getElementById('paymentMethodRow').style.display = 'flex';
+    document.getElementById('paymentMethodText').textContent = paymentMethodNames[paymentMethod] || paymentMethod;
+  }
+}
+
+// Delivery option highlight and update
 document.querySelectorAll('.delivery-opt input').forEach(inp => {
   inp.addEventListener('change', function() {
     document.querySelectorAll('.delivery-opt').forEach(l => l.style.borderColor = 'var(--border)');
     if (this.checked) this.closest('.delivery-opt').style.borderColor = 'var(--primary)';
+    updateSummary();
   });
 });
-// Set initial
+
+// Payment method selection
+document.querySelectorAll('.payment-option').forEach(opt => {
+  opt.addEventListener('change', updatePaymentDisplay);
+});
+
+// Initialize
 const checkedDelivery = document.querySelector('.delivery-opt input:checked');
 if (checkedDelivery) checkedDelivery.closest('.delivery-opt').style.borderColor = 'var(--primary)';
+updateSummary();
+updatePaymentDisplay();
 </script>
 </body>
 </html>

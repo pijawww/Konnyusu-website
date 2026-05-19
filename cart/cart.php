@@ -8,11 +8,13 @@ include __DIR__ . '/../data/products.php';
 requireLogin();
 
 $cartItems = getCartItems();
+$cartTotalItems = getCartCount();
+
+// Calculate totals (we'll do this via JS too)
 $subtotal  = getCartTotal();
 $deliveryFee = $subtotal >= 50000 ? 0 : 5000;
 $tax         = (int)round($subtotal * 0.01);
 $total       = $subtotal + $deliveryFee + $tax;
-$cartTotalItems = getCartCount();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -51,7 +53,7 @@ $cartTotalItems = getCartCount();
   .cart-panel__header h5 { font-size: .95rem; font-weight: 700; color: var(--primary); margin: 0; }
   .cart-item {
     display: grid;
-    grid-template-columns: 80px 1fr auto;
+    grid-template-columns: 30px 80px 1fr auto;
     gap: 1rem;
     padding: 1.1rem 1.5rem;
     border-bottom: 1px solid var(--border);
@@ -60,6 +62,9 @@ $cartTotalItems = getCartCount();
   }
   .cart-item:last-child { border-bottom: none; }
   .cart-item:hover { background: var(--cream); }
+  .item-checkbox {
+    width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary);
+  }
   .cart-item__img {
     width: 80px; height: 80px;
     border-radius: var(--radius-md);
@@ -131,32 +136,6 @@ $cartTotalItems = getCartCount();
     border-top: 2px solid var(--border);
     margin-bottom: 0;
   }
-  .promo-input {
-    display: flex; gap: .5rem; margin-bottom: 1.25rem;
-  }
-  .promo-input input {
-    flex: 1;
-    background: var(--cream);
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: .6rem .9rem;
-    font-family: var(--font-body);
-    font-size: .85rem;
-    outline: none;
-    transition: border-color .2s;
-  }
-  .promo-input input:focus { border-color: var(--primary-light); }
-  .promo-input button {
-    background: var(--primary);
-    color: #fff; border: none;
-    border-radius: var(--radius-md);
-    padding: .6rem 1rem;
-    font-family: var(--font-body);
-    font-size: .82rem; font-weight: 600;
-    cursor: pointer;
-    transition: background .2s;
-  }
-  .promo-input button:hover { background: var(--primary-light); }
   .btn-checkout {
     width: 100%;
     background: var(--primary);
@@ -171,6 +150,11 @@ $cartTotalItems = getCartCount();
     text-decoration: none;
   }
   .btn-checkout:hover { background: var(--primary-light); color: #fff; transform: translateY(-1px); }
+  .btn-checkout:disabled {
+    background: var(--border);
+    cursor: not-allowed;
+    transform: none;
+  }
   .delivery-note {
     background: var(--cream);
     border-radius: var(--radius-md);
@@ -189,9 +173,18 @@ $cartTotalItems = getCartCount();
     padding: .25rem .6rem;
     font-size: .7rem; font-weight: 700; color: var(--text-mid);
   }
+  .select-all-container {
+    display: flex; align-items: center; gap: .5rem;
+  }
+  .select-all-container label {
+    font-size: .85rem; color: var(--text-mid); cursor: pointer;
+    margin: 0;
+  }
   @media (max-width: 900px) {
     .cart-layout { grid-template-columns: 1fr; }
     .summary-panel { position: static; }
+    .cart-item { grid-template-columns: 30px 60px 1fr auto; gap: .75rem; }
+    .cart-item__img { width: 60px; height: 60px; }
   }
   </style>
 </head>
@@ -227,8 +220,11 @@ $cartTotalItems = getCartCount();
         </div>
       <?php else: ?>
         <div class="cart-panel__header">
-          <h5>Daftar Pesanan</h5>
-          <a href="#" onclick="return confirm('Kosongkan semua?')"
+          <div class="select-all-container">
+            <input type="checkbox" id="selectAll" class="item-checkbox" onchange="toggleSelectAll()">
+            <label for="selectAll">Pilih Semua</label>
+          </div>
+          <a href="#" onclick="openClearCartModal(); return false;"
              style="font-size:.8rem;color:var(--danger);text-decoration:none;">
             <i class="bi bi-trash3"></i> Kosongkan
           </a>
@@ -238,7 +234,8 @@ $cartTotalItems = getCartCount();
             $itemId = $item['cart_item_id'] ?? $index;
             $productId = $item['menu_id'] ?? $item['id'];
         ?>
-        <div class="cart-item">
+        <div class="cart-item" data-item-id="<?= $itemId ?>" data-price="<?= $item['price'] ?>" data-qty="<?= $item['quantity'] ?>">
+          <input type="checkbox" class="item-checkbox item-chk" value="<?= $itemId ?>" onchange="updateSummary()">
           <img src="../assets/img/products/<?= $item['image'] ?>"
                class="cart-item__img"
                onerror="this.src='https://placehold.co/80x80/1a3c2e/f0cb7a?text=K'">
@@ -251,62 +248,42 @@ $cartTotalItems = getCartCount();
               <?= formatRupiah($item['price']) ?> / item
             </div>
 
-            <!-- ORDER ITEM DETAIL -->
-            <div style="margin-top:.45rem;display:flex;gap:.45rem;flex-wrap:wrap;">
-
-              <?php if(!empty($item['ice_level'])): ?>
-                <span style="
-                  background:var(--cream);
-                  border:1px solid var(--border);
-                  border-radius:20px;
-                  padding:.2rem .6rem;
-                  font-size:.72rem;
-                  color:var(--text-mid);
-                ">
-                  🧊 <?= htmlspecialchars($item['ice_level']) ?>
-                </span>
-              <?php endif; ?>
-              
-              <?php if(!empty($item['size'])): ?>
-                <span style="
-                  background:var(--cream);
-                  border:1px solid var(--border);
-                  border-radius:20px;
-                  padding:.2rem .6rem;
-                  font-size:.72rem;
-                  color:var(--text-mid);
-                ">
-                  🥤 <?= htmlspecialchars($item['size']) ?>
-                </span>
-              <?php endif; ?>
-
-              <?php if(!empty($item['sugar_level'])): ?>
-                <span style="
-                  background:var(--cream);
-                  border:1px solid var(--border);
-                  border-radius:20px;
-                  padding:.2rem .6rem;
-                  font-size:.72rem;
-                  color:var(--text-mid);
-                ">
-                  🍬 <?= htmlspecialchars($item['sugar_level']) ?>
-                </span>
-              <?php endif; ?>
-
+            <!-- ORDER ITEM DETAIL - Editable -->
+            <div style="margin-top:.6rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+              <select class="cart-option-select" onchange="updateCartOption('<?= $itemId ?>', 'ice_level', this.value)" style="padding:.2rem .5rem;border:1px solid var(--border);border-radius:20px;font-size:.72rem;background:var(--cream);color:var(--text-mid);outline:none;cursor:pointer;">
+                <option value="Normal Ice" <?= ($item['ice_level'] ?? '') === 'Normal Ice' ? 'selected' : '' ?>>Normal Ice</option>
+                <option value="Less Ice" <?= ($item['ice_level'] ?? '') === 'Less Ice' ? 'selected' : '' ?>>Less Ice</option>
+                <option value="No Ice" <?= ($item['ice_level'] ?? '') === 'No Ice' ? 'selected' : '' ?>>No Ice</option>
+              </select>
+              <select class="cart-option-select" onchange="updateCartOption('<?= $itemId ?>', 'sugar_level', this.value)" style="padding:.2rem .5rem;border:1px solid var(--border);border-radius:20px;font-size:.72rem;background:var(--cream);color:var(--text-mid);outline:none;cursor:pointer;">
+                <option value="Normal" <?= ($item['sugar_level'] ?? '') === 'Normal' ? 'selected' : '' ?>>Normal</option>
+                <option value="Less Sugar" <?= ($item['sugar_level'] ?? '') === 'Less Sugar' ? 'selected' : '' ?>>Less Sugar</option>
+                <option value="Extra Sweet" <?= ($item['sugar_level'] ?? '') === 'Extra Sweet' ? 'selected' : '' ?>>Extra Sweet</option>
+              </select>
             </div>
           </div>
           <div class="cart-item__right">
-            <div class="cart-item__subtotal">
+            <div class="cart-item__subtotal" data-item-subtotal="<?= $itemId ?>">
               <?= formatRupiah($item['price'] * $item['quantity']) ?>
             </div>
-            <a href="remove-from-cart.php?id=<?= $itemId ?>"
-               class="btn-remove"
-               onclick="return confirm('Hapus item ini?')">
-               <i class="bi bi-x"></i> Hapus
-            </a>
+            <!-- Quantity Controls -->
+            <div class="qty-ctrl" style="margin-top:.6rem;">
+              <a href="#" class="qty-btn" onclick="updateQty('<?= $itemId ?>', -1); return false;">−</a>
+              <span class="qty-val" id="qty-<?= $itemId ?>"><?= $item['quantity'] ?></span>
+              <a href="#" class="qty-btn" onclick="updateQty('<?= $itemId ?>', 1); return false;">+</a>
+            </div>
+            <button type="button" class="btn-remove" onclick="openDeleteModal('<?= $itemId ?>')">
+              <i class="bi bi-x"></i> Hapus
+            </button>
           </div>
         </div>
         <?php endforeach; ?>
+        <?php endif; ?>
+      <?php if (!empty($cartItems)): ?>
+        <!-- Hidden form for delete -->
+        <form id="deleteForm" method="POST" action="remove-from-cart.php" style="display:none;">
+          <input type="hidden" name="id" id="deleteItemId">
+        </form>
       <?php endif; ?>
     </div>
 
@@ -322,46 +299,34 @@ $cartTotalItems = getCartCount();
     <div class="summary-panel animate-fadeup" style="animation-delay:.1s">
       <h5>Ringkasan Pesanan</h5>
 
-
-
       <!-- Rows -->
       <div class="summary-row">
-        <span>Subtotal (<?= $cartTotalItems ?> item)</span>
-        <span><?= formatRupiah($subtotal) ?></span>
+        <span>Subtotal (<span id="selectedCount">0</span> item)</span>
+        <span id="subtotalPrice">Rp 0</span>
       </div>
       <div class="summary-row">
         <span>Ongkos Kirim</span>
-        <span><?= $deliveryFee === 0 ? '<span style="color:var(--success)">Gratis!</span>' : formatRupiah($deliveryFee) ?></span>
+        <span id="deliveryFee">Rp 0</span>
       </div>
       <div class="summary-row">
         <span>Pajak (1%)</span>
-        <span><?= formatRupiah($tax) ?></span>
+        <span id="taxPrice">Rp 0</span>
       </div>
       <div class="summary-row total">
         <span>Total</span>
-        <span><?= formatRupiah($total) ?></span>
+        <span id="totalPrice">Rp 0</span>
       </div>
 
       <!-- Checkout Btn -->
-      <?php if (!empty($cartItems)): ?>
-        <a href="../checkout/checkout.php" class="btn-checkout mt-4">
+      <form id="checkoutForm" method="POST" action="../checkout/checkout.php" style="margin-top:1.25rem;">
+        <input type="hidden" name="selected_items" id="selectedItemsInput" value="">
+        <button type="submit" id="checkoutBtn" class="btn-checkout" disabled>
           <i class="bi bi-lock-fill"></i> Lanjut ke Pembayaran
-        </a>
-      <?php endif; ?>
+        </button>
+      </form>
 
-      <?php if ($subtotal < 50000 && !empty($cartItems)):
-        $diff = 50000 - $subtotal;
-      ?>
-      <div class="delivery-note mt-3">
-        <i class="bi bi-truck"></i>
-        <span>Tambah <?= formatRupiah($diff) ?> lagi untuk gratis ongkir!</span>
+      <div id="deliveryNote" class="delivery-note mt-3" style="display:none;">
       </div>
-      <?php elseif (!empty($cartItems)): ?>
-      <div class="delivery-note mt-3">
-        <i class="bi bi-check-circle-fill"></i>
-        <span>Selamat! Kamu mendapat gratis ongkir.</span>
-      </div>
-      <?php endif; ?>
 
       <!-- Payment Methods -->
       <div style="margin-top:1.25rem;border-top:1px solid var(--border);padding-top:1rem;">
@@ -382,6 +347,200 @@ $cartTotalItems = getCartCount();
 </div>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="deleteModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div style="background:var(--white);border-radius:var(--radius-lg);padding:2rem;max-width:380px;width:90%;text-align:center;animation:fadeUp .3s;">
+    <div style="font-size:3rem;margin-bottom:1rem;">🗑️</div>
+    <h5 style="font-family:var(--font-display);color:var(--primary);margin-bottom:.5rem;">Hapus Item?</h5>
+    <p style="color:var(--text-muted);font-size:.88rem;margin-bottom:1.5rem;">Item akan dihapus dari keranjang. Kamu bisa menambahkannya lagi kapan saja.</p>
+    <div style="display:flex;gap:.75rem;justify-content:center;">
+      <button onclick="closeDeleteModal()" style="flex:1;padding:.7rem;border:1.5px solid var(--border);border-radius:var(--radius-xl);background:var(--white);font-weight:600;cursor:pointer;color:var(--text-mid);">Batal</button>
+      <button onclick="confirmDelete()" style="flex:1;padding:.7rem;border:none;border-radius:var(--radius-xl);background:var(--danger);color:#fff;font-weight:600;cursor:pointer;">Hapus</button>
+    </div>
+  </div>
+</div>
+
+<!-- Clear Cart Confirmation Modal -->
+<div class="modal-overlay" id="clearCartModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div style="background:var(--white);border-radius:var(--radius-lg);padding:2rem;max-width:380px;width:90%;text-align:center;animation:fadeUp .3s;">
+    <div style="font-size:3rem;margin-bottom:1rem;">🛒</div>
+    <h5 style="font-family:var(--font-display);color:var(--primary);margin-bottom:.5rem;">Kosongkan Keranjang?</h5>
+    <p style="color:var(--text-muted);font-size:.88rem;margin-bottom:1.5rem;">Semua item di keranjang akan dihapus. Apakah kamu yakin?</p>
+    <div style="display:flex;gap:.75rem;justify-content:center;">
+      <button onclick="closeClearCartModal()" style="flex:1;padding:.7rem;border:1.5px solid var(--border);border-radius:var(--radius-xl);background:var(--white);font-weight:600;cursor:pointer;color:var(--text-mid);">Batal</button>
+      <button onclick="confirmClearCart()" style="flex:1;padding:.7rem;border:none;border-radius:var(--radius-xl);background:var(--danger);color:#fff;font-weight:600;cursor:pointer;">Kosongkan</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Initialize - don't check all by default
+document.addEventListener('DOMContentLoaded', function() {
+  // Just update the summary with no items selected initially
+  updateSummary();
+});
+
+let deleteTargetId = null;
+
+function openDeleteModal(itemId) {
+  console.log('Opening delete modal for item:', itemId);
+  deleteTargetId = itemId;
+  const modal = document.getElementById('deleteModal');
+  modal.style.display = 'flex';
+  modal.style.position = 'fixed';
+  modal.style.inset = '0';
+}
+
+function closeDeleteModal() {
+  console.log('Closing delete modal');
+  deleteTargetId = null;
+  const modal = document.getElementById('deleteModal');
+  modal.style.display = 'none';
+}
+
+function confirmDelete() {
+  console.log('Confirming delete for item:', deleteTargetId);
+  if (deleteTargetId) {
+    document.getElementById('deleteItemId').value = deleteTargetId;
+    document.getElementById('deleteForm').submit();
+  } else {
+    console.error('No delete target set!');
+  }
+}
+
+// Clear Cart Modal Functions
+function openClearCartModal() {
+  const modal = document.getElementById('clearCartModal');
+  modal.style.display = 'flex';
+}
+
+function closeClearCartModal() {
+  const modal = document.getElementById('clearCartModal');
+  modal.style.display = 'none';
+}
+
+function confirmClearCart() {
+  // Redirect to clear-cart.php to clear all items
+  window.location.href = 'clear-cart.php';
+}
+
+// Close modal on backdrop click
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+  if (e.target === this) closeDeleteModal();
+});
+
+// Update cart option (ice_level, sugar_level) via AJAX
+function updateCartOption(itemId, optionType, value) {
+  fetch('update-cart.php', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: 'id=' + encodeURIComponent(itemId) + '&' + optionType + '=' + encodeURIComponent(value)
+  });
+}
+
+// Quantity update
+function updateQty(itemId, change) {
+  const qtyEl = document.getElementById('qty-' + itemId);
+  let newQty = parseInt(qtyEl.textContent) + change;
+  if (newQty < 1) newQty = 1;
+  if (newQty > 99) newQty = 99;
+
+  qtyEl.textContent = newQty;
+
+  // Update data attribute
+  const cartItem = document.querySelector(`.cart-item[data-item-id="${itemId}"]`);
+  if (cartItem) {
+    cartItem.dataset.qty = newQty;
+    // Update price
+    const price = parseInt(cartItem.dataset.price);
+    const newSubtotal = price * newQty;
+    const subtotalEl = cartItem.querySelector('[data-item-subtotal]');
+    if (subtotalEl) {
+      subtotalEl.textContent = formatRupiah(newSubtotal);
+    }
+    // Update data-qty attribute
+    cartItem.setAttribute('data-qty', newQty);
+  }
+
+  updateSummary();
+
+  // Update quantity in session via AJAX
+  fetch('update-cart.php', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: 'id=' + encodeURIComponent(itemId) + '&quantity=' + newQty
+  });
+}
+
+function formatRupiah(angka) {
+  return 'Rp ' + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function toggleSelectAll() {
+  const selectAll = document.getElementById('selectAll');
+  const checkboxes = document.querySelectorAll('.item-chk');
+  checkboxes.forEach(cb => cb.checked = selectAll.checked);
+  updateSummary();
+}
+
+function updateSummary() {
+  const checkboxes = document.querySelectorAll('.item-chk');
+  const selectedItems = [];
+  let subtotal = 0;
+  let count = 0;
+  
+  checkboxes.forEach(cb => {
+    if (cb.checked) {
+      const item = cb.closest('.cart-item');
+      const price = parseInt(item.dataset.price);
+      const qty = parseInt(item.dataset.qty);
+      const itemTotal = price * qty;
+      subtotal += itemTotal;
+      count += qty;
+      selectedItems.push(cb.value);
+    }
+  });
+  
+  const deliveryFee = subtotal >= 50000 ? 0 : 5000;
+  const tax = Math.round(subtotal * 0.01);
+  const total = subtotal + deliveryFee + tax;
+  
+  // Update UI
+  document.getElementById('selectedCount').textContent = count;
+  document.getElementById('subtotalPrice').textContent = formatRupiah(subtotal);
+  document.getElementById('deliveryFee').textContent = deliveryFee === 0 ? 'Gratis!' : formatRupiah(deliveryFee);
+  document.getElementById('taxPrice').textContent = formatRupiah(tax);
+  document.getElementById('totalPrice').textContent = formatRupiah(total);
+  
+  // Update checkout button
+  const checkoutBtn = document.getElementById('checkoutBtn');
+  checkoutBtn.disabled = selectedItems.length === 0;
+  
+  // Update selected items input
+  document.getElementById('selectedItemsInput').value = selectedItems.join(',');
+  
+  // Update delivery note
+  const deliveryNote = document.getElementById('deliveryNote');
+  if (selectedItems.length > 0) {
+    if (subtotal < 50000) {
+      const diff = 50000 - subtotal;
+      deliveryNote.innerHTML = '<i class="bi bi-truck"></i><span>Tambah ' + formatRupiah(diff) + ' lagi untuk gratis ongkir!</span>';
+      deliveryNote.style.display = 'flex';
+    } else {
+      deliveryNote.innerHTML = '<i class="bi bi-check-circle-fill"></i><span>Selamat! Kamu mendapat gratis ongkir.</span>';
+      deliveryNote.style.display = 'flex';
+    }
+  } else {
+    deliveryNote.style.display = 'none';
+  }
+  
+  // Update select all checkbox
+  const selectAll = document.getElementById('selectAll');
+  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+  selectAll.checked = allChecked;
+}
+</script>
 </body>
 </html>

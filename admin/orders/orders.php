@@ -26,7 +26,7 @@ $stats = [
 
 function getAllOrdersFromDB(): array {
     global $pdo;
-    $stmt = $pdo->query("SELECT o.*, u.name as user_name, u.phone, u.address FROM orders o LEFT JOIN users u ON o.user_id = u.user_id ORDER BY o.order_date DESC");
+    $stmt = $pdo->query("SELECT o.*, u.name as user_name, p.payment_method FROM orders o LEFT JOIN users u ON o.user_id = u.user_id LEFT JOIN payment p ON o.order_id = p.order_id ORDER BY o.order_date DESC");
     return $stmt->fetchAll();
 }
 
@@ -264,7 +264,15 @@ function getStatusIcon(string $status): string {
                     'total' => $o['total'],
                     'order_date' => date('d M Y, H:i', strtotime($o['order_date'])),
                     'status' => getStatusLabel($o['order_status']),
-                    'order_type' => $o['order_type'] ?? 'dine_in'
+                    'order_type' => $o['order_type'] ?? 'dine_in',
+                    'recipient_name' => $o['recipient_name'] ?? $customerName,
+                    'recipient_phone' => $o['recipient_phone'] ?? $o['phone'] ?? '-',
+                    'recipient_address' => $o['recipient_address'] ?? $o['address'] ?? '-',
+                    'recipient_city' => $o['recipient_city'] ?? '-',
+                    'recipient_postal' => $o['recipient_postal'] ?? '-',
+                    'payment_method' => $o['payment_method'] ?? '-',
+                    'delivery_fee' => $o['delivery_fee'] ?? 0,
+                    'tax' => $o['tax'] ?? 0
                   ]), ENT_QUOTES) ?>)"
                   style="width:30px;height:30px;border-radius:var(--radius-sm);border:1px solid var(--border);background:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);transition:all .2s;"
                   onmouseover="this.style.background='var(--cream)';this.style.color='var(--primary)'" onmouseout="this.style.background='none';this.style.color='var(--text-muted)'">
@@ -371,6 +379,51 @@ function showDetail(o){
     </div>`;
   });
   
+  const paymentMethodNames = {
+    'qris': 'QRIS',
+    'gopay': 'GoPay',
+    'ovo': 'OVO',
+    'dana': 'DANA',
+    'bca': 'BCA Transfer',
+    'cod': 'Bayar di Tempat',
+    'cash': 'Tunai'
+  };
+
+  const orderTypeNames = {
+    'dine_in': 'Makan di Tempat',
+    'takeaway': 'Ambil Sendiri',
+    'delivery': 'Pengiriman',
+    'priority': 'Prioritas (< 20 menit)',
+    'standard': 'Standar (30 menit)',
+    'pickup': 'Ambil Sendiri',
+    'instant': 'Prioritas (< 20 menit)',
+    'same_day': 'Standar (30 menit)'
+  };
+
+  const deliveryFeeNames = {
+    8000: 'Rp 8.000',
+    5000: 'Rp 5.000',
+    0: 'Gratis'
+  };
+
+  const paymentMethodDisplay = paymentMethodNames[o.payment_method] || o.payment_method;
+  const orderTypeDisplay = orderTypeNames[o.order_type] || o.order_type;
+  let deliveryFeeDisplay;
+  const isPickup = o.order_type === 'pickup' || o.order_type === 'takeaway';
+  if (isPickup) {
+    deliveryFeeDisplay = ' - Gratis';
+  } else if (o.delivery_fee > 0) {
+    const feeLabel = deliveryFeeNames[o.delivery_fee] || `Rp ${o.delivery_fee.toLocaleString('id')}`;
+    deliveryFeeDisplay = ` - ${feeLabel}`;
+  } else {
+    deliveryFeeDisplay = ' - Gratis';
+  }
+  const orderTypeWithFee = orderTypeDisplay + deliveryFeeDisplay;
+
+  const subtotal = o.total - (o.delivery_fee || 0) - (o.tax || 0);
+
+  const paymentMethodWithFee = paymentMethodDisplay + ' - Gratis';
+  
   document.getElementById('modalBody').innerHTML=`
     <div class="print-only" style="text-align:center;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px dashed var(--border);">
       <h3 style="font-family:var(--font-display);color:var(--primary);margin:0;">Konnyusu</h3>
@@ -381,17 +434,29 @@ function showDetail(o){
       <span style="font-size:.78rem;color:var(--text-muted);">${o.order_date}</span>
     </div>
     <div style="background:var(--cream);border-radius:var(--radius-md);padding:1rem;margin-bottom:1rem;">
-      <div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.6rem;">Informasi Pelanggan</div>
-      <div class="detail-row"><span>Nama</span><span>${o.customer}</span></div>
-      <div class="detail-row"><span>Telepon</span><span>${o.phone}</span></div>
-      <div class="detail-row"><span>Alamat</span><span style="max-width:220px;text-align:right;">${o.address}</span></div>
+      <div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.6rem;">Informasi Penerima</div>
+      <div class="detail-row"><span>Nama</span><span>${o.recipient_name}</span></div>
+      <div class="detail-row"><span>Telepon</span><span>${o.recipient_phone}</span></div>
+      <div class="detail-row"><span>Alamat</span><span style="max-width:220px;text-align:right;">${o.recipient_address}</span></div>
+      ${o.recipient_city !== '-' ? `<div class="detail-row"><span>Kota</span><span>${o.recipient_city}</span></div>` : ''}
+      ${o.recipient_postal !== '-' ? `<div class="detail-row"><span>Kode Pos</span><span>${o.recipient_postal}</span></div>` : ''}
+    </div>
+    <div style="background:var(--cream);border-radius:var(--radius-md);padding:1rem;margin-bottom:1rem;">
+      <div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.6rem;">Detail Pengiriman & Pembayaran</div>
+      <div class="detail-row"><span>Metode Pengiriman</span><span>${orderTypeWithFee}</span></div>
+      <div class="detail-row"><span>Metode Pembayaran</span><span>${paymentMethodWithFee}</span></div>
     </div>
     <div style="background:var(--cream);border-radius:var(--radius-md);padding:1rem;margin-bottom:1rem;">
       <div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.6rem;">Item Pesanan</div>
       ${items}
-      <div style="border-top:2px solid var(--border);margin-top:.5rem;padding-top:.5rem;display:flex;justify-content:space-between;">
-        <span style="font-weight:700;color:var(--primary);">Total</span>
-        <span style="font-weight:800;color:var(--primary);font-size:1.05rem;">Rp ${o.total.toLocaleString('id')}</span>
+      <div style="border-top:1px solid var(--border);margin-top:.5rem;padding-top:.5rem;">
+        <div class="detail-row"><span>Subtotal</span><span>Rp ${subtotal.toLocaleString('id')}</span></div>
+        <div class="detail-row"><span>Ongkos Kirim</span><span>Rp ${(o.delivery_fee || 0).toLocaleString('id')}</span></div>
+        <div class="detail-row"><span>Pajak (1%)</span><span>Rp ${(o.tax || 0).toLocaleString('id')}</span></div>
+        <div style="border-top:2px solid var(--border);margin-top:.5rem;padding-top:.5rem;display:flex;justify-content:space-between;">
+          <span style="font-weight:700;color:var(--primary);">Total</span>
+          <span style="font-weight:800;color:var(--primary);font-size:1.05rem;">Rp ${o.total.toLocaleString('id')}</span>
+        </div>
       </div>
     </div>
     <div class="print-only" style="text-align:center;margin-top:2rem;padding-top:1rem;border-top:1px dashed var(--border);">

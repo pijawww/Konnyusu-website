@@ -714,12 +714,16 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
                 <label class="form-label" style="font-weight:600;color:var(--primary);font-size:.85rem;">Level Gula</label>
                 <div class="d-flex flex-column gap-2">
                   <div class="form-check">
-                    <input class="form-check-input" type="radio" name="sugar" id="sugarNormal" value="normal" checked>
+                    <input class="form-check-input" type="radio" name="sugar" id="sugarNormal" value="Normal" checked>
                     <label class="form-check-label" for="sugarNormal" style="font-size:.85rem;">Normal</label>
                   </div>
                   <div class="form-check">
-                    <input class="form-check-input" type="radio" name="sugar" id="sugarLess" value="less">
+                    <input class="form-check-input" type="radio" name="sugar" id="sugarLess" value="Less Sugar">
                     <label class="form-check-label" for="sugarLess" style="font-size:.85rem;">Less Sugar</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="sugar" id="sugarExtra" value="Extra Sweet">
+                    <label class="form-check-label" for="sugarExtra" style="font-size:.85rem;">Extra Sweet</label>
                   </div>
                 </div>
               </div>
@@ -727,12 +731,16 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
                 <label class="form-label" style="font-weight:600;color:var(--primary);font-size:.85rem;">Level Es</label>
                 <div class="d-flex flex-column gap-2">
                   <div class="form-check">
-                    <input class="form-check-input" type="radio" name="ice" id="iceNormal" value="normal" checked>
-                    <label class="form-check-label" for="iceNormal" style="font-size:.85rem;">Normal</label>
+                    <input class="form-check-input" type="radio" name="ice" id="iceNormal" value="Normal Ice" checked>
+                    <label class="form-check-label" for="iceNormal" style="font-size:.85rem;">Normal Ice</label>
                   </div>
                   <div class="form-check">
-                    <input class="form-check-input" type="radio" name="ice" id="iceLess" value="less">
+                    <input class="form-check-input" type="radio" name="ice" id="iceLess" value="Less Ice">
                     <label class="form-check-label" for="iceLess" style="font-size:.85rem;">Less Ice</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="ice" id="iceNo" value="No Ice">
+                    <label class="form-check-label" for="iceNo" style="font-size:.85rem;">No Ice</label>
                   </div>
                 </div>
               </div>
@@ -790,18 +798,18 @@ function changeQty(delta) {
   input.value = val;
 }
 
-function addToCart() {
+function addToCart(redirectTo = 'cart') {
   if (!currentProduct) return;
-  
+
   const qty = parseInt(document.getElementById('modalQty').value);
   const sugar = document.querySelector('input[name="sugar"]:checked').value;
   const ice = document.querySelector('input[name="ice"]:checked').value;
-  
+
   // Create form and submit
   const form = document.createElement('form');
   form.method = 'POST';
   form.action = '../cart/add-to-cart.php';
-  
+
   const addField = (name, value) => {
     const input = document.createElement('input');
     input.type = 'hidden';
@@ -809,12 +817,13 @@ function addToCart() {
     input.value = value;
     form.appendChild(input);
   };
-  
+
   addField('id', currentProduct.id);
   addField('qty', qty);
   addField('sugar_level', sugar);
   addField('ice_level', ice);
-  
+  addField('redirect', redirectTo);
+
   document.body.appendChild(form);
   form.submit();
 }
@@ -830,7 +839,7 @@ document.getElementById('btnAddToCart').addEventListener('click', () => {
     }, 150);
     return;
   }
-  addToCart();
+  addToCart('cart');
 });
 
 document.getElementById('btnBuyNow').addEventListener('click', () => {
@@ -841,7 +850,7 @@ document.getElementById('btnBuyNow').addEventListener('click', () => {
     }, 150);
     return;
   }
-  addToCart();
+  addToCart('checkout');
 });
 
 // ---- Scroll reveal ----

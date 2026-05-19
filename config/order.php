@@ -5,7 +5,7 @@ require_once __DIR__ . '/database.php';
 /**
  * Create new order from cart
  */
-function createOrder(int $userId, array $cartItems, string $orderType = 'dine_in', string $notes = '', string $paymentMethod = 'cash'): ?int {
+function createOrder(int $userId, array $cartItems, string $orderType = 'dine_in', string $notes = '', string $paymentMethod = 'cash', array $recipientData = []): ?int {
     global $pdo;
     
     try {
@@ -17,14 +17,37 @@ function createOrder(int $userId, array $cartItems, string $orderType = 'dine_in
             $total += $item['price'] * $item['quantity'];
         }
         
-        // Add delivery fee if needed
-        $deliveryFee = $total >= 50000 ? 0 : 5000;
+        // Calculate delivery fee based on method
+        $deliveryFees = [
+            'priority' => 8000,
+            'standard' => 5000,
+            'pickup' => 0
+        ];
+        $deliveryFee = $deliveryFees[$orderType] ?? 5000;
+        
+        // Apply free delivery if subtotal >= 50000 and not pickup
+        if ($total >= 50000 && $orderType !== 'pickup' && $orderType !== 'takeaway') {
+            $deliveryFee = 0;
+        }
+        
         $tax = (int) round($total * 0.01);
         $grandTotal = $total + $deliveryFee + $tax;
         
-        // Insert order
-        $stmt = $pdo->prepare("INSERT INTO orders (user_id, order_type, total, notes) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$userId, $orderType, $grandTotal, $notes]);
+        // Insert order with recipient data
+        $stmt = $pdo->prepare("INSERT INTO orders (user_id, order_type, total, notes, recipient_name, recipient_phone, recipient_address, recipient_city, recipient_postal, delivery_fee, tax) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([
+            $userId, 
+            $orderType, 
+            $grandTotal, 
+            $notes,
+            $recipientData['name'] ?? null,
+            $recipientData['phone'] ?? null,
+            $recipientData['address'] ?? null,
+            $recipientData['city'] ?? null,
+            $recipientData['postal'] ?? null,
+            $deliveryFee,
+            $tax
+        ]);
         $orderId = $pdo->lastInsertId();
         
         // Insert order items
@@ -74,7 +97,7 @@ function getUserOrders(int $userId): array {
  */
 function getOrder(int $orderId): ?array {
     global $pdo;
-    $stmt = $pdo->prepare("SELECT o.*, u.name AS user_name, u.email AS user_email FROM orders o LEFT JOIN users u ON o.user_id = u.user_id WHERE o.order_id = ?");
+    $stmt = $pdo->prepare("SELECT o.*, u.name AS user_name, u.email AS user_email, p.payment_method, p.payment_status FROM orders o LEFT JOIN users u ON o.user_id = u.user_id LEFT JOIN payment p ON o.order_id = p.order_id WHERE o.order_id = ?");
     $stmt->execute([$orderId]);
     return $stmt->fetch() ?: null;
 }

@@ -64,7 +64,7 @@ function addToCart(int $menuId, int $quantity, int $price, ?string $iceLevel = n
             if (!isset($_SESSION['cart'])) $_SESSION['cart'] = [];
             
             $found = false;
-            foreach ($_SESSION['cart'] as &$item) {
+            foreach ($_SESSION['cart'] as $key => &$item) {
                 if ($item['id'] == $menuId && 
                     ($item['ice_level'] ?? null) == $iceLevel && 
                     ($item['sugar_level'] ?? null) == $sugarLevel && 
@@ -77,6 +77,7 @@ function addToCart(int $menuId, int $quantity, int $price, ?string $iceLevel = n
             
             if (!$found) {
                 $_SESSION['cart'][] = [
+                    'cart_item_id' => uniqid('sess_', true),
                     'id' => $menuId,
                     'quantity' => $quantity,
                     'price' => $price,
@@ -110,13 +111,14 @@ function getCartItems(): array {
         // Session cart with product details
         $items = $_SESSION['cart'] ?? [];
         $fullItems = [];
-        foreach ($items as $item) {
+        foreach ($items as $key => $item) {
             $product = findProduct($item['id']);
             if ($product) {
                 $fullItems[] = array_merge($item, [
                     'name' => $product['name'],
                     'image' => $product['image'],
-                    'menu_id' => $item['id']
+                    'menu_id' => $item['id'],
+                    'cart_item_id' => $item['cart_item_id'] ?? $key
                 ]);
             }
         }
@@ -129,14 +131,14 @@ function getCartItems(): array {
  */
 function updateCartItem(int $itemId, int $quantity): bool {
     global $pdo;
-    
+
     $cartId = getOrCreateCart();
     if ($cartId > 0) {
         // Database cart
         $stmt = $pdo->prepare("SELECT price FROM cart_item WHERE cart_item_id = ? AND cart_id = ? LIMIT 1");
         $stmt->execute([$itemId, $cartId]);
         $item = $stmt->fetch();
-        
+
         if ($item) {
             $subtotal = $item['price'] * $quantity;
             $stmt = $pdo->prepare("UPDATE cart_item SET quantity = ?, subtotal = ? WHERE cart_item_id = ?");
@@ -144,10 +146,41 @@ function updateCartItem(int $itemId, int $quantity): bool {
         }
         return false;
     } else {
+        // Session cart - find by cart_item_id
+        foreach ($_SESSION['cart'] as $key => $item) {
+            if (isset($item['cart_item_id']) && $item['cart_item_id'] == $itemId) {
+                $_SESSION['cart'][$key]['quantity'] = $quantity;
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+/**
+ * Update cart item option (ice_level, sugar_level, size)
+ */
+function updateCartItemOption(int $itemId, string $option, string $value): bool {
+    global $pdo;
+
+    $cartId = getOrCreateCart();
+    $allowedOptions = ['ice_level', 'sugar_level', 'size'];
+
+    if (!in_array($option, $allowedOptions)) {
+        return false;
+    }
+
+    if ($cartId > 0) {
+        // Database cart
+        $stmt = $pdo->prepare("UPDATE cart_item SET $option = ? WHERE cart_item_id = ? AND cart_id = ?");
+        return $stmt->execute([$value, $itemId, $cartId]);
+    } else {
         // Session cart
-        if (isset($_SESSION['cart'][$itemId])) {
-            $_SESSION['cart'][$itemId]['quantity'] = $quantity;
-            return true;
+        foreach ($_SESSION['cart'] as $key => $item) {
+            if (isset($item['cart_item_id']) && $item['cart_item_id'] == $itemId) {
+                $_SESSION['cart'][$key][$option] = $value;
+                return true;
+            }
         }
         return false;
     }
@@ -156,7 +189,7 @@ function updateCartItem(int $itemId, int $quantity): bool {
 /**
  * Remove item from cart
  */
-function removeFromCart(int $itemId): bool {
+function removeFromCart($itemId): bool {
     global $pdo;
     
     $cartId = getOrCreateCart();
@@ -165,8 +198,15 @@ function removeFromCart(int $itemId): bool {
         $stmt = $pdo->prepare("DELETE FROM cart_item WHERE cart_item_id = ? AND cart_id = ?");
         return $stmt->execute([$itemId, $cartId]);
     } else {
-        // Session cart
-        if (isset($_SESSION['cart'][$itemId])) {
+        // Session cart - find by cart_item_id
+        foreach ($_SESSION['cart'] as $key => $item) {
+            if (isset($item['cart_item_id']) && $item['cart_item_id'] == $itemId) {
+                array_splice($_SESSION['cart'], $key, 1);
+                return true;
+            }
+        }
+        // Fallback for numeric index
+        if (is_numeric($itemId) && isset($_SESSION['cart'][$itemId])) {
             array_splice($_SESSION['cart'], $itemId, 1);
             return true;
         }

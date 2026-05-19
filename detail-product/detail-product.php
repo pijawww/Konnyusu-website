@@ -140,9 +140,10 @@ $related = array_slice($related, 0, 4);
 
       <p class="product-desc"><?= htmlspecialchars($product['description']) ?> Disajikan dengan bahan-bahan segar pilihan, tanpa pengawet, dan penuh cinta dari barista kami.</p>
 
-      <form action="../cart/add-to-cart.php" method="POST">
+      <form action="../cart/add-to-cart.php" method="POST" id="addToCartForm">
 
       <input type="hidden" name="id" value="<?= $product['id'] ?>">
+      <input type="hidden" name="redirect" value="cart" id="redirectType">
 
       <!-- Size -->
       <div class="option-label">Ukuran</div>
@@ -211,9 +212,13 @@ $related = array_slice($related, 0, 4);
       </div>
 
       <div class="cta-row">
-        <button type="submit" class="btn-cart">
+        <button type="submit" form="addToCartForm" class="btn-cart">
           <i class="bi bi-bag-plus"></i>
-          Tambah ke Keranjang
+          Masukkan Keranjang
+        </button>
+        <button type="button" class="btn-buy" onclick="buyNow()">
+          <i class="bi bi-lightning-fill"></i>
+          Beli Sekarang
         </button>
       </div>
 
@@ -337,6 +342,11 @@ let qty = 1;
 function changeQty(d) {
   qty = Math.max(1, qty + d);
   document.getElementById('qtyVal').textContent = qty;
+}
+// Buy Now - redirect to checkout
+function buyNow() {
+  document.getElementById('redirectType').value = 'checkout';
+  document.getElementById('addToCartForm').submit();
 }
 // Image switch
 function switchImg(thumb) {

@@ -13,11 +13,25 @@ if (!$product) {
 }
 
 $quantity = (int) ($_POST['qty'] ?? $_POST['quantity'] ?? 1);
-$iceLevel = $_POST['ice_level'] ?? 'normal';
-$sugarLevel = $_POST['sugar_level'] ?? 'normal';
+$iceLevel = $_POST['ice_level'] ?? 'Normal Ice';
+$sugarLevel = $_POST['sugar_level'] ?? 'Normal';
+$size = $_POST['size'] ?? 'Regular';
 
-addToCart($id, $quantity, $product['price'], $iceLevel, $sugarLevel, 'Regular');
+// Calculate price based on size
+$price = $product['price'];
+if ($size === 'Large') {
+    // Assuming Large adds 5000 to base price
+    $price = $product['price'] + 5000;
+}
 
-header('Location: cart.php');
+addToCart($id, $quantity, $price, $iceLevel, $sugarLevel, $size);
+
+// Determine redirect target
+$redirect = $_POST['redirect'] ?? 'cart';
+if ($redirect === 'checkout') {
+    header('Location: ../checkout/checkout.php');
+} else {
+    header('Location: cart.php');
+}
 exit;
 ?>
