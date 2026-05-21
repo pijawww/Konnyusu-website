@@ -71,6 +71,12 @@ $currentUser = getCurrentUser();
 $orderSuccess = false;
 $orderId = null;
 
+// Create a map of product categories for quick lookup
+$productCategories = [];
+foreach ($products as $p) {
+    $productCategories[$p['id']] = $p['category'];
+}
+
 // Handle order submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'place_order' && !empty($cartItems)) {
     $orderType = $_POST['delivery'] ?? $defaultDeliveryMethod;
@@ -344,7 +350,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
       <!-- Items -->
       <div style="margin-bottom:1.25rem;">
-        <?php foreach ($cartItems as $item): ?>
+        <?php foreach ($cartItems as $item):
+            $productId = $item['menu_id'] ?? $item['id'];
+            $productCategory = $productCategories[$productId] ?? '';
+            $isFood = ($productCategory === 'makanan');
+        ?>
         <div class="order-mini-item">
           <img src="../assets/img/products/<?= $item['image'] ?>"
                class="order-mini-img"
@@ -354,6 +364,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
               <?= htmlspecialchars($item['name']) ?>
             </div>
             <div style="font-size:.75rem;color:var(--text-muted);">x<?= $item['quantity'] ?></div>
+            <?php if (!$isFood && (!empty($item['ice_level']) || !empty($item['sugar_level']))): ?>
+            <div style="font-size:.7rem;color:var(--text-muted);margin-top:.25rem;">
+              <?php
+                $options = [];
+                if (!empty($item['ice_level'])) $options[] = $item['ice_level'];
+                if (!empty($item['sugar_level'])) $options[] = $item['sugar_level'];
+                echo implode(' • ', $options);
+              ?>
+            </div>
+            <?php endif; ?>
           </div>
           <div style="font-size:.85rem;font-weight:700;color:var(--primary);flex-shrink:0;">
             <?= formatRupiah($item['price'] * $item['quantity']) ?>

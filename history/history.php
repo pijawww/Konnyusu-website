@@ -38,13 +38,13 @@ foreach ($ordersData as $ord) {
         ];
     }
     
-    // Map status
+    // Map status - sesuai dengan flow: pending=Menunggu, processing=Diproses, shipped=Dikirim, completed=Selesai, cancelled=Dibatalkan
     $statusMap = [
-        'pending' => 'Diproses',
+        'pending'    => 'Menunggu',
         'processing' => 'Diproses',
-        'completed' => 'Selesai',
-        'cancelled' => 'Dibatalkan',
-        'shipped' => 'Dikirim'
+        'shipped'    => 'Dikirim',
+        'completed'  => 'Selesai',
+        'cancelled'  => 'Dibatalkan'
     ];
     
     $status = isset($statusMap[$ord['order_status']]) ? $statusMap[$ord['order_status']] : $ord['order_status'];
@@ -73,14 +73,16 @@ foreach ($ordersData as $ord) {
 }
 
 $statusBadge = [
+    'Menunggu'   => 'k-badge-gray',
     'Selesai'    => 'k-badge-green',
     'Diproses'   => 'k-badge-accent',
-    'Dikirim'    => 'k-badge-gray',
+    'Dikirim'    => 'k-badge-blue',
     'Dibatalkan' => 'k-badge-red',
 ];
 $statusIcon = [
+    'Menunggu'   => 'bi-hourglass-split',
     'Selesai'    => 'bi-check-circle-fill',
-    'Diproses'   => 'bi-clock-fill',
+    'Diproses'   => 'bi-gear-fill',
     'Dikirim'    => 'bi-truck',
     'Dibatalkan' => 'bi-x-circle-fill',
 ];
@@ -203,9 +205,10 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
   <!-- Filter Tabs -->
   <div class="filter-tabs animate-fadeup" style="animation-delay:.08s">
     <button class="filter-tab active" data-filter="all">Semua</button>
-    <button class="filter-tab" data-filter="Selesai">Selesai</button>
+    <button class="filter-tab" data-filter="Menunggu">Menunggu</button>
     <button class="filter-tab" data-filter="Diproses">Diproses</button>
     <button class="filter-tab" data-filter="Dikirim">Dikirim</button>
+    <button class="filter-tab" data-filter="Selesai">Selesai</button>
     <button class="filter-tab" data-filter="Dibatalkan">Dibatalkan</button>
   </div>
 
@@ -412,8 +415,8 @@ function showOrderDetail(order) {
 
   document.getElementById('detailModalBody').innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">' +
-      '<span class="k-badge ' + (order.status === 'Selesai' ? 'k-badge-green' : (order.status === 'Dibatalkan' ? 'k-badge-red' : 'k-badge-accent')) + '">' +
-        '<i class="bi ' + (order.status === 'Selesai' ? 'bi-check-circle-fill' : (order.status === 'Dibatalkan' ? 'bi-x-circle-fill' : 'bi-clock-fill')) + '"></i> ' + order.status +
+      '<span class="k-badge ' + (order.status === 'Selesai' ? 'k-badge-green' : (order.status === 'Dibatalkan' ? 'k-badge-red' : (order.status === 'Menunggu' ? 'k-badge-gray' : 'k-badge-accent'))) + '">' +
+        '<i class="bi ' + (order.status === 'Selesai' ? 'bi-check-circle-fill' : (order.status === 'Dibatalkan' ? 'bi-x-circle-fill' : (order.status === 'Menunggu' ? 'bi-hourglass-split' : 'bi-gear-fill'))) + '"></i> ' + order.status +
       '</span>' +
       '<span style="font-size:.78rem;color:var(--text-muted);">' + order.date + '</span>' +
     '</div>' +

@@ -10,6 +10,12 @@ requireLogin();
 $cartItems = getCartItems();
 $cartTotalItems = getCartCount();
 
+// Create a map of product categories for quick lookup
+$productCategories = [];
+foreach ($products as $p) {
+    $productCategories[$p['id']] = $p['category'];
+}
+
 // Calculate totals (we'll do this via JS too)
 $subtotal  = getCartTotal();
 $deliveryFee = $subtotal >= 50000 ? 0 : 5000;
@@ -230,9 +236,11 @@ $total       = $subtotal + $deliveryFee + $tax;
           </a>
         </div>
 
-        <?php foreach ($cartItems as $index => $item): 
+        <?php foreach ($cartItems as $index => $item):
             $itemId = $item['cart_item_id'] ?? $index;
             $productId = $item['menu_id'] ?? $item['id'];
+            $productCategory = $productCategories[$productId] ?? '';
+            $isFood = ($productCategory === 'makanan');
         ?>
         <div class="cart-item" data-item-id="<?= $itemId ?>" data-price="<?= $item['price'] ?>" data-qty="<?= $item['quantity'] ?>">
           <input type="checkbox" class="item-checkbox item-chk" value="<?= $itemId ?>" onchange="updateSummary()">
@@ -248,7 +256,8 @@ $total       = $subtotal + $deliveryFee + $tax;
               <?= formatRupiah($item['price']) ?> / item
             </div>
 
-            <!-- ORDER ITEM DETAIL - Editable -->
+            <?php if (!$isFood): ?>
+            <!-- ORDER ITEM DETAIL - Editable (only for drinks) -->
             <div style="margin-top:.6rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
               <select class="cart-option-select" onchange="updateCartOption('<?= $itemId ?>', 'ice_level', this.value)" style="padding:.2rem .5rem;border:1px solid var(--border);border-radius:20px;font-size:.72rem;background:var(--cream);color:var(--text-mid);outline:none;cursor:pointer;">
                 <option value="Normal Ice" <?= ($item['ice_level'] ?? '') === 'Normal Ice' ? 'selected' : '' ?>>Normal Ice</option>
@@ -261,6 +270,7 @@ $total       = $subtotal + $deliveryFee + $tax;
                 <option value="Extra Sweet" <?= ($item['sugar_level'] ?? '') === 'Extra Sweet' ? 'selected' : '' ?>>Extra Sweet</option>
               </select>
             </div>
+            <?php endif; ?>
           </div>
           <div class="cart-item__right">
             <div class="cart-item__subtotal" data-item-subtotal="<?= $itemId ?>">

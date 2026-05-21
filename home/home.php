@@ -709,7 +709,7 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
               </div>
             </div>
             
-            <div class="row g-3 mb-4">
+            <div id="sugarIceOptions" class="row g-3 mb-4">
               <div class="col-6">
                 <label class="form-label" style="font-weight:600;color:var(--primary);font-size:.85rem;">Level Gula</label>
                 <div class="d-flex flex-column gap-2">
@@ -774,7 +774,7 @@ function openProductModal(id, name, category, desc, price, img) {
   document.getElementById('modalCategory').textContent = category.charAt(0).toUpperCase() + category.slice(1);
   document.getElementById('modalDesc').textContent = desc;
   document.getElementById('modalPrice').textContent = 'Rp ' + price.toLocaleString('id-ID');
-  
+
   const modalImg = document.getElementById('modalImg');
   if (img) {
     modalImg.src = img;
@@ -783,11 +783,19 @@ function openProductModal(id, name, category, desc, price, img) {
     modalImg.src = 'https://placehold.co/400x320/1a3c2e/f0cb7a?text=Konnyusu';
     modalImg.style.display = 'block';
   }
-  
+
   document.getElementById('modalQty').value = 1;
   document.getElementById('sugarNormal').checked = true;
   document.getElementById('iceNormal').checked = true;
-  
+
+  // Show/hide sugar and ice options based on category
+  const sugarIceOptions = document.getElementById('sugarIceOptions');
+  if (category === 'makanan') {
+    sugarIceOptions.style.display = 'none';
+  } else {
+    sugarIceOptions.style.display = '';
+  }
+
   productModal.show();
 }
 
@@ -802,8 +810,7 @@ function addToCart(redirectTo = 'cart') {
   if (!currentProduct) return;
 
   const qty = parseInt(document.getElementById('modalQty').value);
-  const sugar = document.querySelector('input[name="sugar"]:checked').value;
-  const ice = document.querySelector('input[name="ice"]:checked').value;
+  const isFood = currentProduct.category === 'makanan';
 
   // Create form and submit
   const form = document.createElement('form');
@@ -820,8 +827,15 @@ function addToCart(redirectTo = 'cart') {
 
   addField('id', currentProduct.id);
   addField('qty', qty);
-  addField('sugar_level', sugar);
-  addField('ice_level', ice);
+
+  // Only send sugar/ice for non-food items
+  if (!isFood) {
+    const sugar = document.querySelector('input[name="sugar"]:checked').value;
+    const ice = document.querySelector('input[name="ice"]:checked').value;
+    addField('sugar_level', sugar);
+    addField('ice_level', ice);
+  }
+
   addField('redirect', redirectTo);
 
   document.body.appendChild(form);
