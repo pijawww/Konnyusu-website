@@ -6,7 +6,7 @@ require_once __DIR__ . '/auth.php';
 /**
  * Auto-add viewed_by_admin column if not exists
  */
-function initNotificationColumn(): void {
+function initAdminNotificationColumn(): void {
     global $pdo;
     try {
         $stmt = $pdo->query("SHOW COLUMNS FROM orders LIKE 'viewed_by_admin'");
@@ -18,7 +18,7 @@ function initNotificationColumn(): void {
     }
 }
 
-initNotificationColumn();
+initAdminNotificationColumn();
 
 /**
  * Get all menu items
@@ -91,6 +91,70 @@ function deleteMenu(int $menuId): bool {
         error_log("Delete menu failed: " . $e->getMessage());
         return false;
     }
+}
+
+/**
+ * Get stats comparison between this month and last month
+ */
+function getStatsComparison(): array {
+    global $pdo;
+    
+    $thisMonthStart = date('Y-m-01 00:00:00');
+    $lastMonthStart = date('Y-m-01 00:00:00', strtotime('last month'));
+    $lastMonthEnd = date('Y-m-t 23:59:59', strtotime('last month'));
+    
+    // Total orders this month vs last month
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE order_date >= ?");
+    $stmt->execute([$thisMonthStart]);
+    $ordersThisMonth = (int)$stmt->fetchColumn();
+    
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE order_date >= ? AND order_date <= ?");
+    $stmt->execute([$lastMonthStart, $lastMonthEnd]);
+    $ordersLastMonth = (int)$stmt->fetchColumn();
+    
+    $ordersChange = $ordersLastMonth > 0 ? round((($ordersThisMonth - $ordersLastMonth) / $ordersLastMonth) * 100) : ($ordersThisMonth > 0 ? 100 : 0);
+    
+    // Pending orders change
+    $stmt = $pdo->query("SELECT COUNT(*) FROM orders WHERE order_status = 'pending'");
+    $pendingNow = (int)$stmt->fetchColumn();
+    
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE order_status = 'pending' AND order_date < ?");
+    $stmt->execute([$thisMonthStart]);
+    $pendingBefore = (int)$stmt->fetchColumn();
+    $pendingChange = $pendingNow - $pendingBefore;
+    
+    // Revenue this month vs last month
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(total), 0) FROM orders WHERE order_date >= ? AND order_status IN ('pending', 'processing', 'completed', 'shipped')");
+    $stmt->execute([$thisMonthStart]);
+    $revenueThisMonth = (int)$stmt->fetchColumn();
+    
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(total), 0) FROM orders WHERE order_date >= ? AND order_date <= ? AND order_status IN ('pending', 'processing', 'completed', 'shipped')");
+    $stmt->execute([$lastMonthStart, $lastMonthEnd]);
+    $revenueLastMonth = (int)$stmt->fetchColumn();
+    
+    $revenueChange = $revenueLastMonth > 0 ? round((($revenueThisMonth - $revenueLastMonth) / $revenueLastMonth) * 100) : ($revenueThisMonth > 0 ? 100 : 0);
+    
+    // Customers this month vs last month
+    $customersThisMonth = 0;
+    try {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE role = 'user' AND created_at >= ?");
+        $stmt->execute([$thisMonthStart]);
+        $customersThisMonth = (int)$stmt->fetchColumn();
+    } catch (Exception $e) {
+        // Fallback if created_at column doesn't exist
+        $stmt = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'user'");
+        $customersThisMonth = (int)$stmt->fetchColumn();
+    }
+    
+    return [
+        'orders_change' => $ordersChange,
+        'orders_this_month' => $ordersThisMonth,
+        'pending_change' => $pendingChange,
+        'pending_now' => $pendingNow,
+        'revenue_change' => $revenueChange,
+        'revenue_this_month' => $revenueThisMonth,
+        'customers_this_month' => $customersThisMonth
+    ];
 }
 
 /**
@@ -190,14 +254,16 @@ function markOrderAsViewed(int $orderId): bool {
  */
 function getTopSellingProducts(int $limit = 5): array {
     global $pdo;
-    
-    $sql = "SELECT m.*, COALESCE(SUM(oi.quantity), 0) as total_sold 
-            FROM menu m 
-            LEFT JOIN order_item oi ON m.menu_id = oi.menu_id 
-            GROUP BY m.menu_id 
-            ORDER BY total_sold DESC 
+
+    $sql = "SELECT m.menu_id, m.name, m.image,
+                COALESCE(SUM(oi.quantity), 0) AS total_sold
+            FROM menu m
+            LEFT JOIN order_item oi ON m.menu_id = oi.menu_id
+            LEFT JOIN orders o ON oi.order_id = o.order_id AND o.order_status = 'completed'
+            GROUP BY m.menu_id
+            ORDER BY total_sold DESC
             LIMIT $limit";
-    
+
     $stmt = $pdo->query($sql);
     return $stmt->fetchAll();
 }

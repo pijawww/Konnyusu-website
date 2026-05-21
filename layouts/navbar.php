@@ -12,10 +12,16 @@ if (!isset($cartTotalItems)) {
 }
 $currentUser = getCurrentUser();
 
-// Get user notification count if logged in
+// Get user notification count if logged in and notifications enabled
 $userNotifCount = 0;
+$userNotifications = [];
+$notificationsEnabled = true;
 if ($currentUser && $currentUser['role'] !== 'admin') {
-    $userNotifCount = getUserUnviewedCount($currentUser['user_id']);
+    $notificationsEnabled = isNotificationsEnabled($currentUser['user_id']);
+    if ($notificationsEnabled) {
+        $userNotifCount = getUnviewedNotificationCount($currentUser['user_id']);
+        $userNotifications = getUserNotifications($currentUser['user_id'], 5);
+    }
 }
 
 // Detect active page for nav highlighting
@@ -38,7 +44,7 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
     <form class="kny-navbar__search" action="../home/home.php" method="GET" id="navSearchForm">
       <i class="bi bi-search kny-navbar__search-icon"></i>
       <input type="text" name="q" class="kny-navbar__search-input"
-             placeholder="Cari kopi, teh, minuman...">
+             placeholder="Cari kopi, makanan, minuman...">
     </form>
 
     <!-- Nav Links (desktop) -->
@@ -67,14 +73,59 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
 
     <!-- Cart + Mobile Toggle -->
     <div class="kny-navbar__actions">
-      <?php if ($currentUser && $currentUser['role'] !== 'admin'): ?>
-        <div style="position:relative;">
-          <a href="../history/history.php" class="kny-navbar__cart" title="Notifikasi" style="position:relative;">
-            <i class="bi bi-bell"></i>
+      <?php if ($currentUser && $currentUser['role'] !== 'admin' && $notificationsEnabled): ?>
+        <div class="dropdown" id="notifDropdownWrapper">
+          <button class="kny-navbar__bell" id="notifBellBtn" title="Notifikasi" data-bs-toggle="dropdown" aria-expanded="false" onclick="markNotificationsRead()">
+            <i class="bi bi-bell" style="color: var(--primary);"></i>
             <?php if ($userNotifCount > 0): ?>
-              <span style="position:absolute;top:-4px;right:-6px;min-width:18px;height:18px;background:var(--danger);color:#fff;border-radius:50%;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;border:2px solid #fff;"><?= $userNotifCount ?></span>
+              <span id="notifBadge" style="position:absolute;top:-4px;right:-6px;min-width:18px;height:18px;background:var(--danger);color:#fff;border-radius:50%;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;border:2px solid rgba(26,60,46,0.5);"><?= $userNotifCount ?></span>
             <?php endif; ?>
-          </a>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end kny-notif-dropdown" aria-labelledby="notifBellBtn">
+            <li class="kny-notif-header">
+              <div class="d-flex justify-content-between align-items-center">
+                <span style="font-weight:700;color:var(--primary);font-size:.85rem;">Notifikasi</span>
+                <?php if ($userNotifCount > 0): ?>
+                <span style="font-size:.72rem;color:var(--text-muted);"><?= $userNotifCount ?> baru</span>
+                <?php endif; ?>
+              </div>
+            </li>
+            <?php if (empty($userNotifications)): ?>
+            <li class="kny-notif-empty">
+              <i class="bi bi-bell-slash" style="font-size:1.5rem;color:var(--text-muted);"></i>
+              <span>Tidak ada notifikasi</span>
+            </li>
+            <?php else: ?>
+              <?php foreach ($userNotifications as $notif): ?>
+              <li>
+                <a class="dropdown-item kny-notif-item <?= $notif['is_read'] ? '' : 'unread' ?>" href="../history/history.php">
+                  <div class="d-flex align-items-start gap-2">
+                    <div class="kny-notif-icon">
+                      <?php
+                      $notifIcons = [
+                        'pending' => 'bi-clock-fill',
+                        'processing' => 'bi-hourglass-split',
+                        'shipped' => 'bi-truck',
+                        'completed' => 'bi-check-circle-fill',
+                        'cancelled' => 'bi-x-circle-fill'
+                      ];
+                      ?>
+                      <i class="bi <?= $notifIcons[$notif['order_status']] ?? 'bi-bell' ?>"></i>
+                    </div>
+                    <div class="kny-notif-content">
+                      <div class="kny-notif-title"><?= htmlspecialchars($notif['title']) ?></div>
+                      <div class="kny-notif-message"><?= htmlspecialchars($notif['message']) ?></div>
+                      <div class="kny-notif-time"><?= date('d M Y, H:i', strtotime($notif['created_at'])) ?></div>
+                    </div>
+                  </div>
+                </a>
+              </li>
+              <?php endforeach; ?>
+            <?php endif; ?>
+            <li class="kny-notif-footer">
+              <a href="../history/history.php" class="text-center" style="font-size:.78rem;color:var(--primary);font-weight:600;">Lihat Semua Riwayat</a>
+            </li>
+          </ul>
         </div>
       <?php endif; ?>
       <a href="<?= $currentUser ? '../cart/cart.php' : '../auth/login.php' ?>" class="kny-navbar__cart" title="Keranjang">
@@ -168,6 +219,24 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
 .kny-navbar__toggle span {
   color: white;
   background: white;
+}
+.kny-navbar__bell {
+  position: relative;
+  font-size: 1.3rem;
+  color: white;
+  padding: .4rem;
+  border-radius: var(--radius-md);
+  transition: background .2s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+.kny-navbar__bell:hover {
+  background: rgba(255,255,255,.08);
+}
+.kny-navbar__bell i {
+  color: white;
 }
 
 .kny-navbar__container {
@@ -302,6 +371,64 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
   text-decoration: none;
 }
 .kny-navbar__search--mobile { padding: .75rem 1.5rem; max-width: 100%; }
+/* Notification Dropdown */
+.kny-notif-dropdown {
+  width: 340px !important;
+  max-width: 90vw !important;
+  padding: 0 !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-lg) !important;
+  overflow: hidden;
+}
+.kny-notif-header {
+  padding: .9rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--cream);
+}
+.kny-notif-empty {
+  padding: 2rem 1.25rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: .85rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .5rem;
+}
+.kny-notif-item {
+  padding: .85rem 1.25rem !important;
+  border-bottom: 1px solid var(--border) !important;
+  transition: background .2s;
+}
+.kny-notif-item:last-child { border-bottom: none !important; }
+.kny-notif-item:hover { background: var(--cream) !important; }
+.kny-notif-item.unread { background: #f0f7ff; }
+.kny-notif-item.unread:hover { background: #e8f0ff; }
+.kny-notif-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+.kny-notif-icon.processing { background: #fff8ec; color: var(--accent); }
+.kny-notif-icon.shipped { background: #eff6ff; color: var(--primary); }
+.kny-notif-icon.completed { background: #ecfaf4; color: var(--success); }
+.kny-notif-icon.cancelled { background: #fdf0f0; color: var(--danger); }
+.kny-notif-icon.pending { background: #f5f5f5; color: var(--text-muted); }
+.kny-notif-content { flex: 1; min-width: 0; }
+.kny-notif-title { font-size: .85rem; font-weight: 600; color: var(--primary); margin-bottom: .2rem; }
+.kny-notif-message { font-size: .78rem; color: var(--text-mid); line-height: 1.4; }
+.kny-notif-time { font-size: .7rem; color: var(--text-muted); margin-top: .3rem; }
+.kny-notif-footer {
+  padding: .75rem 1.25rem;
+  border-top: 1px solid var(--border);
+  background: var(--cream);
+}
 
 @media (max-width: 900px) {
   .kny-navbar__links,
@@ -331,4 +458,27 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
 document.getElementById('navToggle')?.addEventListener('click', function() {
   document.getElementById('mobileMenu').classList.toggle('open');
 });
+
+function markNotificationsRead() {
+  // Make AJAX call to mark all notifications as read
+  fetch('../history/mark-notifications-read.php')
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Hide badge
+        const badge = document.getElementById('notifBadge');
+        if (badge) {
+          badge.style.display = 'none';
+        }
+        // Remove unread class from items
+        document.querySelectorAll('.kny-notif-item.unread').forEach(function(item) {
+          item.classList.remove('unread');
+        });
+        // Update header count
+        const headerCount = document.querySelector('.kny-notif-header span:last-child');
+        if (headerCount) headerCount.textContent = '0 baru';
+      }
+    })
+    .catch(err => console.log('Error marking notifications read:', err));
+}
 </script>

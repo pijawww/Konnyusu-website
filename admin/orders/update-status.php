@@ -9,11 +9,12 @@ requireAdmin();
 if (isset($_POST['order_id']) && isset($_POST['status'])) {
     $orderId = (int)$_POST['order_id'];
     $status = $_POST['status'];
-    
+    $cancellationNote = $_POST['cancellation_note'] ?? '';
+
     // Validasi status
-    $validStatuses = ['pending', 'processing', 'shipped', 'completed', 'cancelled'];
+    $validStatuses = ['pending', 'processing', 'sent', 'completed', 'cancelled'];
     if (in_array($status, $validStatuses)) {
-        updateOrderStatus($orderId, $status);
+        updateOrderStatus($orderId, $status, $cancellationNote);
     }
 }
 

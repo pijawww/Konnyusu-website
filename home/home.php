@@ -469,10 +469,10 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
           <i class="bi bi-award-fill"></i> #1 Minuman Premium Indonesia
         </div>
         <h1 class="hero__title">
-          Nikmati <em>Kopi</em> &amp;<br>Minuman Terbaik Kami
+          Nikmati <em>Susu</em> &amp;<br>Minuman Terbaik Kami
         </h1>
         <p class="hero__subtitle">
-          Dari biji arabika pilihan hingga teh premium grade ceremonial —
+          Dari susu segar pilihan hingga kopi arabika premium —
           kami hadirkan pengalaman minum yang tak terlupakan, langsung ke tangan Anda.
         </p>
         <div class="hero__cta-group">
@@ -534,7 +534,7 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     <div class="row align-items-end mb-4 scroll-reveal">
       <div class="col">
         <div class="section-label">Menu Kami</div>
-        <h2 class="section-title">Temukan Minuman Favoritmu</h2>
+        <h2 class="section-title">Temukan Makanan & Minuman Favoritmu</h2>
       </div>
       <div class="col-auto d-none d-md-block">
         <span class="text-muted" style="font-size:.85rem;">
@@ -550,7 +550,7 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
         'all'        => ['icon' => 'bi-grid-fill',      'label' => 'Semua'],
         'coffee'     => ['icon' => 'bi-cup-hot-fill',   'label' => 'Kopi'],
         'non-coffee' => ['icon' => 'bi-cup-straw',      'label' => 'Non Kopi'],
-        'tea'        => ['icon' => 'bi-flower1',        'label' => 'Teh'],
+        'makanan'    => ['icon' => 'bi-egg-fried',     'label' => 'Makanan'],
       ];
       foreach ($cats as $key => $info):
         $isActive = ($activecat === $key) ? 'active' : '';
@@ -636,12 +636,12 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     <div class="row g-4">
       <?php
       $whys = [
-          ['bi-cup-hot-fill', 'Biji Kopi Premium', 'Single origin arabika dan robusta pilihan dari perkebunan terbaik Nusantara.'],
+          ['bi-cup-straw', 'Susu Sapi Segar', 'Susu sapi pilihan terbaik untuk minuman yang creamy dan kaya nutrisi.'],
+          ['bi-cup-hot-fill', 'Biji Kopi Pilihan', 'Single origin arabika pilihan dari perkebunan terbaik Nusantara.'],
           ['bi-lightning-charge-fill', 'Pesanan Cepat', 'Siap saji dalam 5 menit, pengiriman ke lokasi Anda sebelum Anda duduk.'],
           ['bi-shield-check', 'Kualitas Terjamin', 'Barista bersertifikat internasional mengerjakan setiap pesanan dengan standar tertinggi.'],
           ['bi-tree-fill', 'Ramah Lingkungan', 'Kemasan biodegradable dan sumber bahan baku yang berkelanjutan.'],
           ['bi-credit-card', 'Pembayaran Mudah', 'Dukung QRIS, transfer bank, dan semua metode pembayaran digital populer.'],
-          ['bi-gift-fill', 'Reward Program', 'Kumpulkan poin setiap pembelian dan tukar dengan minuman gratis pilihan.'],
       ];
       foreach ($whys as $i => $w):
         $delay = ($i % 3) * 100;

@@ -26,8 +26,8 @@
           <li><a href="../home/home.php">Beranda</a></li>
           <li><a href="../home/home.php?cat=coffee">Kopi</a></li>
           <li><a href="../home/home.php?cat=non-coffee">Non Kopi</a></li>
-          <li><a href="../home/home.php?cat=dessert">Dessert</a></li>
-        </ul>
+          <li><a href="../home/home.php?cat=makanan">Makanan</a></li>
+                  </ul>
       </div>
       <div>
         <h6>Akun</h6>

@@ -12,6 +12,8 @@ $completeStats = getCompleteStats();
 $topProducts = getTopSellingProducts(5);
 $weeklyRevenue = getWeeklyRevenue();
 $allOrders = getAllOrders(); // From order.php
+// Filter only completed or cancelled orders for "Semua Pesanan" card
+$filteredOrders = array_filter($allOrders, fn($o) => in_array($o['order_status'], ['completed', 'cancelled']));
 
 // Stats data
 $stats = [
@@ -42,7 +44,8 @@ function getStatusLabel(string $status): string {
 <link rel="stylesheet" href="../../assets/css/global.css">
 <style>
 .admin-layout{display:flex;min-height:100vh;}
-.admin-sidebar{width:240px;flex-shrink:0;background:var(--primary);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.admin-sidebar{width:240px;flex-shrink:0;background:var(--primary);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;transform:translateX(0);transition:transform .3s ease;z-index:999;}
+.admin-sidebar.closed{transform:translateX(-100%);position:fixed;left:0;box-shadow:4px 0 20px rgba(0,0,0,.15);}
 .sidebar-brand{padding:1.8rem 1rem;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;}
 .sidebar-brand-text{font-family:var(--font-display);font-size:1.3rem;font-weight:700;color:#fff;}
 .sidebar-nav{padding:1.25rem 0;flex:1;}
@@ -58,7 +61,13 @@ function getStatusLabel(string $status): string {
 .admin-main{flex:1;overflow-x:hidden;}
 .admin-topbar{background:var(--white);border-bottom:1px solid var(--border);padding:.9rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:1rem;}
 .admin-topbar h6{font-size:.95rem;font-weight:700;color:var(--primary);margin:0;}
-.admin-body{padding:2rem;}
+.admin-topbar__left{display:flex;align-items:center;gap:.75rem;}
+.hamburger-btn{background:none;border:none;cursor:pointer;padding:.5rem;border-radius:var(--radius-sm);transition:background .2s;}
+.hamburger-btn:hover{background:var(--cream);}
+.hamburger-btn span{display:block;width:22px;height:2px;background:var(--primary);border-radius:2px;transition:all .25s;}
+.hamburger-btn span:nth-child(2){margin:.45rem 0;}
+.admin-sidebar{transition:transform .3s ease;}
+.admin-body{padding:2rem;padding-top:1.5rem;}
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:1.1rem;margin-bottom:2rem;}
 .stat-card{background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--border);padding:1.25rem;display:flex;align-items:flex-start;gap:.9rem;}
 .stat-card__icon{width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0;}
@@ -116,13 +125,17 @@ function getStatusLabel(string $status): string {
 
 <div class="admin-main">
   <div class="admin-topbar">
-    <h6>Laporan</h6>
-    <div class="d-flex gap-2 no-print">
-      <button onclick="window.print()" class="btn-outline-brand" style="font-size:.85rem;padding:.55rem 1.1rem;">
-        <i class="bi bi-printer me-1"></i> Print
+    <div class="admin-topbar__left">
+      <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menu">
+        <span></span>
+        <span></span>
+        <span></span>
       </button>
+      <h6>Laporan</h6>
+    </div>
+    <div class="d-flex gap-2 no-print">
       <a href="export.php" class="btn-brand" style="font-size:.85rem;padding:.55rem 1.1rem;text-decoration:none;">
-        <i class="bi bi-download me-1"></i> Export Semua Pesanan
+        <i class="bi bi-download me-1"></i> Ekspor Laporan
       </a>
     </div>
   </div>
@@ -181,10 +194,10 @@ function getStatusLabel(string $status): string {
                 <tr><th>ID</th><th>Pelanggan</th><th>Tanggal</th><th>Total</th><th>Status</th></tr>
               </thead>
               <tbody>
-                <?php if(empty($allOrders)):?>
+                <?php if(empty($filteredOrders)):?>
                 <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted);">Belum ada pesanan</td></tr>
                 <?php else:?>
-                <?php foreach($allOrders as $o):?>
+                <?php foreach($filteredOrders as $o):?>
                 <tr>
                   <td><span style="font-family:monospace;font-weight:700;color:var(--primary);">#<?=$o['order_id']?></span></td>
                   <td><?=htmlspecialchars($o['user_name'] ?? 'Pelanggan')?></td>
@@ -205,5 +218,14 @@ function getStatusLabel(string $status): string {
 </div>
 
 </div>
+
+<!-- Hamburger Toggle Script -->
+<script>
+document.getElementById('hamburgerBtn')?.addEventListener('click', function() {
+  document.querySelectorAll('.admin-sidebar').forEach(function(sidebar) {
+    sidebar.classList.toggle('closed');
+  });
+});
+</script>
 </body>
 </html>

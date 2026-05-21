@@ -9,11 +9,14 @@ require_once __DIR__ . '/../../data/products.php';
 requireAdmin();
 
 $allOrders = getAllOrders();
+// Filter only completed or cancelled orders
+$allOrders = array_filter($allOrders, fn($o) => in_array($o['order_status'], ['completed', 'cancelled']));
 
 function getStatusLabel(string $status): string {
     $labels = [
         'pending' => 'Menunggu',
         'processing' => 'Diproses',
+        'shipped' => 'Dikirim',
         'completed' => 'Selesai',
         'cancelled' => 'Dibatalkan'
     ];
@@ -74,9 +77,9 @@ tr:last-child td{border-bottom:none;}
 </div>
 
 <div class="header">
-    <h1>☕ Konnyusu</h1>
-    <p>Laporan Semua Pesanan</p>
-    <p style="margin-top:.5rem;font-size:.8rem;">Dicetak pada: <?= date('d F Y, H:i') ?></p>
+    <img src="../../assets/img/logo.jpeg" alt="Konnyusu" style="height:100px;object-fit:contain;">
+    <p style="margin-top:.5rem;font-size:.8rem;">Laporan Semua Pesanan</p>
+    <p style="margin-top:.25rem;font-size:.8rem;">Dicetak pada: <?= date('d F Y, H:i') ?></p>
 </div>
 
 <?php

@@ -15,9 +15,53 @@ function isLoggedIn(): bool {
 function getCurrentUser(): ?array {
     if (!isLoggedIn()) return null;
     global $pdo;
-    $stmt = $pdo->prepare("SELECT user_id, name, username, email, phone, address, role FROM users WHERE user_id = ?");
+    $stmt = $pdo->prepare("SELECT user_id, name, username, email, phone, address, role, birthdate, gender, bio, notifications_enabled FROM users WHERE user_id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     return $stmt->fetch() ?: null;
+}
+
+/**
+ * Update user notification setting
+ */
+function updateNotificationSetting(int $userId, bool $enabled): bool {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("UPDATE users SET notifications_enabled = ? WHERE user_id = ?");
+        return $stmt->execute([$enabled ? 1 : 0, $userId]);
+    } catch (Exception $e) {
+        error_log("Update notification setting failed: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Get user notification setting
+ */
+function isNotificationsEnabled(int $userId): bool {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("SELECT notifications_enabled FROM users WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $result = $stmt->fetchColumn();
+        return (bool) ($result !== false ? $result : true);
+    } catch (Exception $e) {
+        return true; // Default to enabled if column doesn't exist
+    }
+}
+
+/**
+ * Auto-add notifications_enabled column if not exists
+ */
+function initNotificationColumn(): void {
+    global $pdo;
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM users LIKE 'notifications_enabled'");
+        if ($stmt->rowCount() === 0) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN notifications_enabled TINYINT(1) DEFAULT 1 AFTER role");
+        }
+    } catch (Exception $e) {
+        // Ignore errors if column already exists
+    }
 }
 
 /**
@@ -80,4 +124,101 @@ function requireAdmin(): void {
         exit;
     }
 }
+
+/**
+ * Auto-add user profile columns if not exists
+ */
+function initUserProfileColumns(): void {
+    global $pdo;
+    try {
+        $columns = ['birthdate', 'gender', 'bio'];
+        foreach ($columns as $col) {
+            $stmt = $pdo->query("SHOW COLUMNS FROM users LIKE '$col'");
+            if ($stmt->rowCount() === 0) {
+                $pdo->exec("ALTER TABLE users ADD COLUMN $col VARCHAR(255) DEFAULT NULL");
+            }
+        }
+    } catch (Exception $e) {
+        // Ignore
+    }
+}
+
+/**
+ * Update user profile
+ */
+function updateUserProfile(int $userId, array $data): bool {
+    global $pdo;
+    try {
+        // Auto-create columns if needed
+        initUserProfileColumns();
+
+        $fields = [];
+        $values = [];
+
+        $allowedFields = ['name', 'phone', 'birthdate', 'gender', 'bio', 'username', 'address'];
+        foreach ($allowedFields as $field) {
+            if (isset($data[$field])) {
+                $fields[] = "$field = ?";
+                $values[] = $data[$field];
+            }
+        }
+
+        if (empty($fields)) return false;
+
+        $values[] = $userId;
+        $sql = "UPDATE users SET " . implode(', ', $fields) . " WHERE user_id = ?";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($values);
+
+        // Refresh session
+        $stmt = $pdo->prepare("SELECT user_id, name, username, email, phone, address, role FROM users WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $updatedUser = $stmt->fetch();
+        if ($updatedUser) {
+            $_SESSION['user_id'] = $updatedUser['user_id'];
+            $_SESSION['role'] = $updatedUser['role'];
+        }
+
+        return true;
+    } catch (Exception $e) {
+        error_log("Update profile failed: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Change user password
+ */
+function changePassword(int $userId, string $currentPassword, string $newPassword): array {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("SELECT password FROM users WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch();
+
+        if (!$user) {
+            return ['success' => false, 'error' => 'User tidak ditemukan'];
+        }
+
+        if (!password_verify($currentPassword, $user['password'])) {
+            return ['success' => false, 'error' => 'Kata sandi lama salah'];
+        }
+
+        if (strlen($newPassword) < 6) {
+            return ['success' => false, 'error' => 'Kata sandi baru minimal 6 karakter'];
+        }
+
+        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE user_id = ?");
+        $stmt->execute([$hashedPassword, $userId]);
+
+        return ['success' => true];
+    } catch (Exception $e) {
+        error_log("Change password failed: " . $e->getMessage());
+        return ['success' => false, 'error' => 'Terjadi kesalahan. Silakan coba lagi.'];
+    }
+}
+
+initUserProfileColumns();
+initNotificationColumn();
 ?>

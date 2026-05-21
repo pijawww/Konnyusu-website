@@ -34,7 +34,7 @@ function createOrder(int $userId, array $cartItems, string $orderType = 'dine_in
         $grandTotal = $total + $deliveryFee + $tax;
         
         // Insert order with recipient data
-        $stmt = $pdo->prepare("INSERT INTO orders (user_id, order_type, total, notes, recipient_name, recipient_phone, recipient_address, recipient_city, recipient_postal, delivery_fee, tax) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO orders (user_id, order_type, total, notes, recipient_name, recipient_phone, recipient_address, recipient_city, recipient_postal, delivery_fee, tax, viewed_by_user) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)");
         $stmt->execute([
             $userId, 
             $orderType, 
@@ -87,7 +87,7 @@ function createOrder(int $userId, array $cartItems, string $orderType = 'dine_in
  */
 function getUserOrders(int $userId): array {
     global $pdo;
-    $stmt = $pdo->prepare("SELECT order_id, order_date, order_status, total, order_type FROM orders WHERE user_id = ? ORDER BY order_date DESC");
+    $stmt = $pdo->prepare("SELECT * FROM orders WHERE user_id = ? ORDER BY order_date DESC");
     $stmt->execute([$userId]);
     return $stmt->fetchAll();
 }
@@ -124,14 +124,28 @@ function getAllOrders(): array {
 /**
  * Update order status
  */
-function updateOrderStatus(int $orderId, string $status): bool {
+function updateOrderStatus(int $orderId, string $status, string $cancellationNote = ''): bool {
     global $pdo;
     try {
-        $stmt = $pdo->prepare("UPDATE orders SET order_status = ? WHERE order_id = ?");
-        $stmt->execute([$status, $orderId]);
+        $stmt = $pdo->prepare("UPDATE orders SET order_status = ?, cancellation_note = ?, viewed_by_user = 0 WHERE order_id = ?");
+        $stmt->execute([$status, $cancellationNote, $orderId]);
         return true;
     } catch (Exception $e) {
         return false;
+    }
+}
+
+/**
+ * Get cancellation note for an order
+ */
+function getCancellationNote(int $orderId): string {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("SELECT cancellation_note FROM orders WHERE order_id = ?");
+        $stmt->execute([$orderId]);
+        return $stmt->fetchColumn() ?: '';
+    } catch (Exception $e) {
+        return '';
     }
 }
 
@@ -141,10 +155,69 @@ function updateOrderStatus(int $orderId, string $status): bool {
 function getUserUnviewedCount(int $userId): int {
     global $pdo;
     try {
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ? AND viewed_by_user = 0");
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ? AND viewed_by_user = 0 AND order_status != 'pending'");
         return (int) $stmt->fetchColumn();
     } catch (Exception $e) {
         return 0;
+    }
+}
+
+/**
+ * Get unviewed notification count (alias for getUserUnviewedCount)
+ */
+function getUnviewedNotificationCount(int $userId): int {
+    return getUserUnviewedCount($userId);
+}
+
+/**
+ * Get user notifications from orders
+ */
+function getUserNotifications(int $userId, int $limit = 10): array {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("SELECT order_id AS id, order_status, viewed_by_user AS is_read, order_date AS created_at, cancellation_note FROM orders WHERE user_id = ? AND order_status != 'pending' ORDER BY order_date DESC LIMIT ?");
+        $stmt->execute([$userId, $limit]);
+        $orders = $stmt->fetchAll();
+        
+        $notifications = [];
+        foreach ($orders as $order) {
+            $title = '';
+            $message = '';
+            
+            switch ($order['order_status']) {
+                case 'processing':
+                    $title = 'Pesanan Diproses';
+                    $message = "Pesanan #" . $order['id'] . " sedang diproses";
+                    break;
+                case 'sent':
+                    $title = 'Pesanan Dikirim';
+                    $message = "Pesanan #" . $order['id'] . " sedang dalam perjalanan";
+                    break;
+                case 'completed':
+                    $title = 'Pesanan Selesai';
+                    $message = "Pesanan #" . $order['id'] . " telah selesai";
+                    break;
+                case 'cancelled':
+                    $title = 'Pesanan Dibatalkan';
+                    $message = $order['cancellation_note'] ?: "Pesanan #" . $order['id'] . " dibatalkan";
+                    break;
+            }
+            
+            if ($title) {
+                $notifications[] = [
+                    'id' => $order['id'],
+                    'title' => $title,
+                    'message' => $message,
+                    'order_status' => $order['order_status'],
+                    'order_id' => $order['id'],
+                    'is_read' => $order['is_read'],
+                    'created_at' => $order['created_at']
+                ];
+            }
+        }
+        return $notifications;
+    } catch (Exception $e) {
+        return [];
     }
 }
 
@@ -156,6 +229,27 @@ function markOrderAsViewedByUser(int $orderId, int $userId): bool {
     try {
         $stmt = $pdo->prepare("UPDATE orders SET viewed_by_user = 1 WHERE order_id = ? AND user_id = ?");
         $stmt->execute([$orderId, $userId]);
+        return true;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+/**
+ * Mark notification as read (calls markOrderAsViewedByUser)
+ */
+function markNotificationAsRead(int $orderId, int $userId): bool {
+    return markOrderAsViewedByUser($orderId, $userId);
+}
+
+/**
+ * Mark all notifications as read for user
+ */
+function markAllNotificationsAsRead(int $userId): bool {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("UPDATE orders SET viewed_by_user = 1 WHERE user_id = ?");
+        $stmt->execute([$userId]);
         return true;
     } catch (Exception $e) {
         return false;
@@ -177,5 +271,65 @@ function initUserNotificationColumn(): void {
     }
 }
 
+/**
+ * Auto-add cancellation_note column if not exists
+ */
+function initCancellationNoteColumn(): void {
+    global $pdo;
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM orders LIKE 'cancellation_note'");
+        if ($stmt->rowCount() === 0) {
+            $pdo->exec("ALTER TABLE orders ADD COLUMN cancellation_note TEXT AFTER order_status");
+        }
+    } catch (Exception $e) {
+        // Ignore
+    }
+}
+
 initUserNotificationColumn();
+initCancellationNoteColumn();
+
+/**
+ * Get real sold count per product from completed orders
+ * More accurate than the denormalized menu.sold column
+ */
+function getRealSoldCount(?int $menuId = null): int {
+    global $pdo;
+    if ($menuId !== null) {
+        $stmt = $pdo->prepare("
+            SELECT COALESCE(SUM(oi.quantity), 0)
+            FROM order_item oi
+            JOIN orders o ON oi.order_id = o.order_id
+            WHERE oi.menu_id = ? AND o.order_status = 'completed'
+        ");
+        $stmt->execute([$menuId]);
+        return (int) $stmt->fetchColumn();
+    }
+    // Total sold across all products
+    $stmt = $pdo->query("
+        SELECT COALESCE(SUM(oi.quantity), 0)
+        FROM order_item oi
+        JOIN orders o ON oi.order_id = o.order_id
+        WHERE o.order_status = 'completed'
+    ");
+    return (int) $stmt->fetchColumn();
+}
+
+/**
+ * Get all products with real sold count from completed orders
+ */
+function getProductsWithRealSold(): array {
+    global $pdo;
+    $stmt = $pdo->query("
+        SELECT m.menu_id AS id, m.name, m.description, m.price, m.category, m.image, m.stock, m.is_new, m.is_best,
+            COALESCE(SUM(oi.quantity), 0) AS sold,
+            COALESCE(SUM(oi.quantity), 0) AS real_sold
+        FROM menu m
+        LEFT JOIN order_item oi ON m.menu_id = oi.menu_id
+        LEFT JOIN orders o ON oi.order_id = o.order_id AND o.order_status = 'completed'
+        GROUP BY m.menu_id
+        ORDER BY m.menu_id DESC
+    ");
+    return $stmt->fetchAll();
+}
 ?>

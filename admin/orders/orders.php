@@ -74,7 +74,8 @@ function getStatusIcon(string $status): string {
 <link rel="stylesheet" href="../../assets/css/global.css">
 <style>
 .admin-layout{display:flex;min-height:100vh;}
-.admin-sidebar{width:240px;flex-shrink:0;background:var(--primary);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.admin-sidebar{width:240px;flex-shrink:0;background:var(--primary);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;transform:translateX(0);transition:transform .3s ease;z-index:999;}
+.admin-sidebar.closed{transform:translateX(-100%);position:fixed;left:0;box-shadow:4px 0 20px rgba(0,0,0,.15);}
 .sidebar-brand{padding:1.8rem 1rem;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;}
 .sidebar-brand-text{font-family:var(--font-display);font-size:1.3rem;font-weight:700;color:#fff;}
 .sidebar-nav{padding:1.25rem 0;flex:1;}
@@ -90,7 +91,13 @@ function getStatusIcon(string $status): string {
 .admin-main{flex:1;overflow-x:hidden;}
 .admin-topbar{background:var(--white);border-bottom:1px solid var(--border);padding:.9rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:1rem;}
 .admin-topbar h6{font-size:.95rem;font-weight:700;color:var(--primary);margin:0;}
-.admin-body{padding:2rem;}
+.admin-topbar__left{display:flex;align-items:center;gap:.75rem;}
+.hamburger-btn{background:none;border:none;cursor:pointer;padding:.5rem;border-radius:var(--radius-sm);transition:background .2s;}
+.hamburger-btn:hover{background:var(--cream);}
+.hamburger-btn span{display:block;width:22px;height:2px;background:var(--primary);border-radius:2px;transition:all .25s;}
+.hamburger-btn span:nth-child(2){margin:.45rem 0;}
+.admin-sidebar{transition:transform .3s ease;}
+.admin-body{padding:2rem;padding-top:1.5rem;}
 .stat-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:.9rem;margin-bottom:1.75rem;}
 .stat-strip-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;text-align:center;}
 .stat-strip-card__val{font-family:var(--font-display);font-size:1.4rem;font-weight:700;color:var(--primary);}
@@ -116,13 +123,24 @@ function getStatusIcon(string $status): string {
 .detail-row span:first-child{color:var(--text-muted);}
 .detail-row span:last-child{font-weight:600;color:var(--primary);}
 .print-only{display:none;}
+.cancel-modal-text{font-size:.9rem;color:var(--text-mid);margin-bottom:1rem;}
+.cancel-form-group{margin-bottom:1rem;}
+.cancel-form-group label{display:block;font-size:.8rem;font-weight:600;color:var(--text-dark);margin-bottom:.4rem;}
+.cancel-form-group textarea{width:100%;background:var(--cream);border:1.5px solid var(--border);border-radius:var(--radius-md);padding:.7rem 1rem;font-family:var(--font-body);font-size:.88rem;color:var(--text-dark);outline:none;resize:vertical;min-height:80px;}
+.cancel-form-group textarea:focus{border-color:var(--primary);}
 @media(max-width:900px){.admin-sidebar{display:none;}.admin-body{padding:1.25rem;}.stat-strip{grid-template-columns:repeat(3,1fr);}}
 @media print{
-    .admin-sidebar,.admin-topbar,.no-print{display:none!important;}
-    .admin-body{padding:0;}
-    .print-only{display:block;}
-    .modal-overlay{position:static;background:none;backdrop-filter:none;display:block!important;}
-    .modal-box{max-width:100%;box-shadow:none;border:none;}
+    *{margin:0!important;padding:0!important;}
+    html,body{height:auto!important;page-break-after:avoid!important;}
+    .admin-layout,.admin-sidebar,.admin-topbar,.no-print,.stat-strip,.k-table{display:none!important;}
+    #detailModal{display:block!important;position:static!important;width:100%!important;}
+    .print-only{display:flex!important;flex-direction:column;align-items:center;justify-content:center;width:100%!important;text-align:center!important;}
+    .modal-overlay{display:block!important;position:static!important;background:none!important;backdrop-filter:none!important;width:100%!important;}
+    .modal-box{display:block!important;max-width:100%!important;width:100%!important;box-shadow:none!important;border:none!important;padding:0!important;}
+    .modal-body{padding:0!important;}
+    body{margin:0!important;padding:1.5cm!important;}
+    .page-wrapper{padding-top:0!important;display:none!important;}
+    @page {size: auto;margin: 0.5cm;}
 }
 </style>
 </head>
@@ -155,7 +173,14 @@ function getStatusIcon(string $status): string {
 
 <div class="admin-main">
   <div class="admin-topbar no-print">
-    <h6>Kelola Pesanan</h6>
+    <div class="admin-topbar__left">
+      <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <h6>Kelola Pesanan</h6>
+    </div>
     <div style="display:flex;align-items:center;gap:.75rem;">
       <button style="background:none;border:none;font-size:1.2rem;color:var(--text-mid);position:relative;cursor:pointer;">
         <i class="bi bi-bell"></i>
@@ -166,11 +191,7 @@ function getStatusIcon(string $status): string {
   </div>
 
   <div class="admin-body">
-    <!-- Print Header -->
-    <div class="print-only" style="text-align:center;margin-bottom:2rem;">
-      <h2 style="font-family:var(--font-display);color:var(--primary);">Konnyusu</h2>
-      <p style="color:var(--text-muted);">Bukti Pesanan</p>
-    </div>
+
 
     <!-- Stat Strip -->
     <div class="stat-strip animate-fadeup no-print">
@@ -203,7 +224,7 @@ function getStatusIcon(string $status): string {
     </div>
 
     <!-- Orders Table -->
-    <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;" class="animate-fadeup">
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;" class="animate-fadeup no-print">
       <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
         <span style="font-size:.9rem;font-weight:700;color:var(--primary);">Daftar Pesanan</span>
         <span style="font-size:.78rem;color:var(--text-muted);"><?= count($allOrders) ?> pesanan</span>
@@ -252,6 +273,7 @@ function getStatusIcon(string $status): string {
               </span>
             </td>
             <td style="font-size:.78rem;color:var(--text-muted);white-space:nowrap;"><?= date('d M Y, H:i', strtotime($o['order_date'])) ?></td>
+<?php $cancellationNote = getCancellationNote($o['order_id']); ?>
             <td style="text-align:center;" class="no-print">
               <div style="display:flex;align-items:center;gap:.4rem;justify-content:center;flex-wrap:wrap;">
                 <button title="Detail & Cetak"
@@ -272,7 +294,8 @@ function getStatusIcon(string $status): string {
                     'recipient_postal' => $o['recipient_postal'] ?? '-',
                     'payment_method' => $o['payment_method'] ?? '-',
                     'delivery_fee' => $o['delivery_fee'] ?? 0,
-                    'tax' => $o['tax'] ?? 0
+                    'tax' => $o['tax'] ?? 0,
+                    'cancellation_note' => $cancellationNote
                   ]), ENT_QUOTES) ?>)"
                   style="width:30px;height:30px;border-radius:var(--radius-sm);border:1px solid var(--border);background:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);transition:all .2s;"
                   onmouseover="this.style.background='var(--cream)';this.style.color='var(--primary)'" onmouseout="this.style.background='none';this.style.color='var(--text-muted)'">
@@ -290,27 +313,15 @@ function getStatusIcon(string $status): string {
                   </button>
                 </form>
                 <?php elseif($o['order_status'] === 'processing'): ?>
-                <?php if(($o['order_type'] ?? 'dine_in') === 'delivery'): ?>
                 <form method="post" action="update-status.php" style="display:inline;">
                   <input type="hidden" name="order_id" value="<?= $o['order_id'] ?>">
                   <input type="hidden" name="status" value="shipped">
                   <button type="submit" title="Kirim Pesanan"
-                    style="padding:.25rem .6rem;border-radius:var(--radius-sm);border:1.5px solid #3b82f6;background:none;color:#3b82f6;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .2s;"
-                    onmouseover="this.style.background='#3b82f6';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='#3b82f6'">
+                    style="padding:.25rem .6rem;border-radius:var(--radius-sm);border:1.5px solid var(--primary);background:none;color:var(--primary);font-size:.75rem;font-weight:600;cursor:pointer;transition:all .2s;"
+                    onmouseover="this.style.background='var(--primary)';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='var(--primary)'">
                     Kirim
                   </button>
                 </form>
-                <?php else: ?>
-                <form method="post" action="update-status.php" style="display:inline;">
-                  <input type="hidden" name="order_id" value="<?= $o['order_id'] ?>">
-                  <input type="hidden" name="status" value="completed">
-                  <button type="submit" title="Selesaikan Pesanan"
-                    style="padding:.25rem .6rem;border-radius:var(--radius-sm);border:1.5px solid var(--success);background:none;color:var(--success);font-size:.75rem;font-weight:600;cursor:pointer;transition:all .2s;"
-                    onmouseover="this.style.background='var(--success)';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='var(--success)'">
-                    Selesai
-                  </button>
-                </form>
-                <?php endif; ?>
                 <?php elseif($o['order_status'] === 'shipped'): ?>
                 <form method="post" action="update-status.php" style="display:inline;">
                   <input type="hidden" name="order_id" value="<?= $o['order_id'] ?>">
@@ -321,6 +332,15 @@ function getStatusIcon(string $status): string {
                     Selesai
                   </button>
                 </form>
+                <?php endif; ?>
+
+                <?php if($o['order_status'] !== 'completed' && $o['order_status'] !== 'cancelled'): ?>
+                <button type="button" title="Batalkan Pesanan"
+                  onclick="openCancelModal(<?= $o['order_id'] ?>)"
+                  style="padding:.25rem .6rem;border-radius:var(--radius-sm);border:1.5px solid var(--danger);background:none;color:var(--danger);font-size:.75rem;font-weight:600;cursor:pointer;transition:all .2s;"
+                  onmouseover="this.style.background='var(--danger)';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='var(--danger)'">
+                  Batalkan
+                </button>
                 <?php endif; ?>
               </div>
             </td>
@@ -356,6 +376,38 @@ function getStatusIcon(string $status): string {
   </div>
 </div>
 
+<!-- Cancel Order Modal -->
+<div class="modal-overlay" id="cancelModal">
+  <div class="modal-box" style="max-width:420px;">
+    <div class="modal-header">
+      <h5><i class="bi bi-exclamation-triangle text-danger me-2"></i>Batalkan Pesanan</h5>
+      <button onclick="closeCancelModal()" style="background:none;border:none;font-size:1.25rem;cursor:pointer;color:var(--text-muted);">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="cancel-modal-text">Pesanan <strong>#<span id="cancelOrderId"></span></strong> akan dibatalkan. Mohon berikan alasan pembatalan:</p>
+      <form method="POST" action="update-status.php" id="cancelForm">
+        <input type="hidden" name="order_id" id="cancelOrderInput">
+        <input type="hidden" name="status" value="cancelled">
+        <div class="cancel-form-group">
+          <label for="cancellationNote">Catatan Pembatalan (opsional)</label>
+          <textarea name="cancellation_note" id="cancellationNote" placeholder="Contoh: Stok produk habis, Pelanggan meminta pembatalan, dll..."></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeCancelModal()" class="btn-outline-brand" style="font-size:.85rem;padding:.55rem 1.1rem;">Batal</button>
+      <button onclick="submitCancelForm()" class="btn-danger" style="background:var(--danger);color:#fff;border:none;border-radius:var(--radius-md);padding:.55rem 1.2rem;font-size:.85rem;font-weight:600;cursor:pointer;">
+        <i class="bi bi-x-circle me-1"></i>Konfirmasi Batalkan
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+.btn-danger{background:var(--danger);color:#fff;border:none;border-radius:var(--radius-md);padding:.55rem 1.2rem;font-size:.85rem;font-weight:600;cursor:pointer;transition:background .2s;}
+.btn-danger:hover{background:#c0392b;}
+</style>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 // Live search in table
@@ -370,6 +422,14 @@ document.getElementById('searchInput').addEventListener('input',function(){
 // Detail modal
 function showDetail(o){
   document.getElementById('modalOrderId').textContent='#'+o.order_id;
+  
+  // Show/hide print button based on status
+  const printBtn = document.querySelector('#detailModal .modal-footer .btn-brand');
+  const isPrintable = o.status === 'Selesai' || o.status === 'Dibatalkan';
+  if (printBtn) {
+    printBtn.style.display = isPrintable ? 'inline-flex' : 'none';
+  }
+  
   let items='';
   o.items.forEach(it=>{
     const itemTotal = (it.price || 0) * (it.quantity || 1);
@@ -425,12 +485,13 @@ function showDetail(o){
   const paymentMethodWithFee = paymentMethodDisplay + ' - Gratis';
   
   document.getElementById('modalBody').innerHTML=`
-    <div class="print-only" style="text-align:center;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px dashed var(--border);">
-      <h3 style="font-family:var(--font-display);color:var(--primary);margin:0;">Konnyusu</h3>
-      <p style="color:var(--text-muted);margin:.25rem 0 0 0;">Bukti Pesanan #${o.order_id}</p>
+    <div class="print-only" style="display:none;text-align:center;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px dashed var(--border);">
+      <img src="../../assets/img/logo.jpeg" alt="Konnyusu" style="height:100px;object-fit:contain;margin:0 auto;display:block;">
+      <p style="color:var(--primary);margin:1rem 0 0.25rem 0;font-family:var(--font-display);font-size:1.4rem;font-weight:700;text-align:center;">Bukti Pemesanan</p>
+      <p style="color:var(--text-muted);margin:0;font-size:1rem;font-family:monospace;font-weight:600;text-align:center;">#${o.order_id}</p>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-      <span class="k-badge ${o.status==='Selesai'?'k-badge-green':'k-badge-accent'}">${o.status}</span>
+      <span class="k-badge ${o.status==='Selesai'?'k-badge-green':(o.status==='Dibatalkan'?'k-badge-red':'k-badge-accent')}">${o.status}</span>
       <span style="font-size:.78rem;color:var(--text-muted);">${o.order_date}</span>
     </div>
     <div style="background:var(--cream);border-radius:var(--radius-md);padding:1rem;margin-bottom:1rem;">
@@ -459,6 +520,12 @@ function showDetail(o){
         </div>
       </div>
     </div>
+    ${o.cancellation_note ? `
+    <div style="background:#fdf0f0;border-radius:var(--radius-md);padding:1rem;margin-bottom:1rem;border:1px solid #f5b8b8;">
+      <div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--danger);margin-bottom:.6rem;"><i class="bi bi-exclamation-circle me-1"></i>Alasan Pembatalan</div>
+      <p style="font-size:.85rem;color:var(--text-dark);margin:0;line-height:1.5;">${o.cancellation_note}</p>
+    </div>
+    ` : ''}
     <div class="print-only" style="text-align:center;margin-top:2rem;padding-top:1rem;border-top:1px dashed var(--border);">
       <p style="font-size:.85rem;color:var(--text-muted);margin:0;">Terima kasih sudah memesan di Konnyusu!</p>
       <p style="font-size:.75rem;color:var(--text-muted);margin:.25rem 0 0 0;">— Semoga harimu menyenangkan —</p>
@@ -467,6 +534,35 @@ function showDetail(o){
 }
 function closeModal(){document.getElementById('detailModal').classList.remove('open');}
 document.getElementById('detailModal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+// Cancel modal functions
+function openCancelModal(orderId) {
+  document.getElementById('cancelOrderId').textContent = orderId;
+  document.getElementById('cancelOrderInput').value = orderId;
+  document.getElementById('cancellationNote').value = '';
+  document.getElementById('cancelModal').classList.add('open');
+}
+
+function closeCancelModal() {
+  document.getElementById('cancelModal').classList.remove('open');
+}
+
+function submitCancelForm() {
+  document.getElementById('cancelForm').submit();
+}
+
+document.getElementById('cancelModal').addEventListener('click', function(e) {
+  if (e.target === this) closeCancelModal();
+});
+</script>
+
+<!-- Hamburger Toggle Script -->
+<script>
+document.getElementById('hamburgerBtn')?.addEventListener('click', function() {
+  document.querySelectorAll('.admin-sidebar').forEach(function(sidebar) {
+    sidebar.classList.toggle('closed');
+  });
+});
 </script>
 </body>
 </html>

@@ -54,33 +54,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$name, $description, $price, $category, $stock, $isNew, $isBest, $menuId]);
             }
             $msg = 'success:Produk berhasil diperbarui!';
+        } elseif ($action === 'delete') {
+            $menuId = (int) ($_POST['id'] ?? 0);
+            $stmt = $pdo->prepare("DELETE FROM menu WHERE menu_id = ?");
+            $stmt->execute([$menuId]);
+            $msg = 'success:Produk berhasil dihapus!';
         }
     } catch (Exception $e) {
         $msg = 'error:Gagal! ' . $e->getMessage();
     }
 }
 
-// Handle delete
-if (isset($_GET['delete'])) {
-    $menuId = (int) $_GET['delete'];
-    try {
-        $stmt = $pdo->prepare("DELETE FROM menu WHERE menu_id = ?");
-        $stmt->execute([$menuId]);
-        $msg = 'success:Produk berhasil dihapus!';
-    } catch (Exception $e) {
-        $msg = 'error:Gagal menghapus! ' . $e->getMessage();
-    }
-}
+require_once __DIR__ . '/../../config/order.php';
 
-// Get all products
-$products = getAllMenu();
+// Get all products with real sold count from completed orders
+$products = getProductsWithRealSold();
 
 // Stats
 $stats = [
-    'total' => count($products),
-    'best' => count(array_filter($products, fn($p) => $p['is_best'])),
-    'new' => count(array_filter($products, fn($p) => $p['is_new'])),
-    'total_sold' => array_sum(array_column($products, 'sold'))
+    'total'      => count($products),
+    'best'       => count(array_filter($products, fn($p) => $p['is_best'])),
+    'new'        => count(array_filter($products, fn($p) => $p['is_new'])),
+    'total_sold' => array_sum(array_column($products, 'real_sold'))
 ];
 ?>
 <!DOCTYPE html>
@@ -94,7 +89,8 @@ $stats = [
 <link rel="stylesheet" href="../../assets/css/global.css">
 <style>
 .admin-layout{display:flex;min-height:100vh;}
-.admin-sidebar{width:240px;flex-shrink:0;background:var(--primary);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.admin-sidebar{width:240px;flex-shrink:0;background:var(--primary);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;transform:translateX(0);transition:transform .3s ease;z-index:999;}
+.admin-sidebar.closed{transform:translateX(-100%);position:fixed;left:0;box-shadow:4px 0 20px rgba(0,0,0,.15);}
 .sidebar-brand{padding:1.8rem 1rem;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;}
 .sidebar-nav{padding:1.25rem 0;flex:1;}
 .sidebar-section-label{font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);padding:.5rem 1.25rem;margin-bottom:.25rem;}
@@ -109,7 +105,13 @@ $stats = [
 .admin-main{flex:1;overflow-x:hidden;}
 .admin-topbar{background:var(--white);border-bottom:1px solid var(--border);padding:.9rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:1rem;}
 .admin-topbar h6{font-size:.95rem;font-weight:700;color:var(--primary);margin:0;}
-.admin-body{padding:2rem;}
+.admin-topbar__left{display:flex;align-items:center;gap:.75rem;}
+.hamburger-btn{background:none;border:none;cursor:pointer;padding:.5rem;border-radius:var(--radius-sm);transition:background .2s;}
+.hamburger-btn:hover{background:var(--cream);}
+.hamburger-btn span{display:block;width:22px;height:2px;background:var(--primary);border-radius:2px;transition:all .25s;}
+.hamburger-btn span:nth-child(2){margin:.45rem 0;}
+.admin-sidebar{transition:transform .3s ease;}
+.admin-body{padding:2rem;padding-top:1.5rem;}
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:1.1rem;margin-bottom:2rem;}
 .stat-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;display:flex;align-items:flex-start;gap:.9rem;transition:transform .2s,box-shadow .2s;}
 .stat-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);}
@@ -183,7 +185,14 @@ $stats = [
 
 <div class="admin-main">
   <div class="admin-topbar">
-    <h6>Kelola Produk</h6>
+    <div class="admin-topbar__left">
+      <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <h6>Kelola Produk</h6>
+    </div>
     <button class="btn-brand" style="font-size:.85rem;padding:.55rem 1.1rem;" onclick="openModal('addModal')">
       <i class="bi bi-plus-lg me-1"></i> Tambah Produk
     </button>
@@ -225,8 +234,7 @@ $stats = [
         <option value="all">Semua Kategori</option>
         <option value="coffee">Coffee</option>
         <option value="non-coffee">Non-Coffee</option>
-        <option value="tea">Tea</option>
-        <option value="dessert">Dessert</option>
+        <option value="makanan">Makanan</option>
       </select>
     </div>
 
@@ -255,12 +263,21 @@ $stats = [
             <td><?=$p['stock']?></td>
             <td style="text-align:center">
               <div style="display:flex;align-items:center;gap:.4rem;justify-content:center;">
-                <button onclick='openEditModal(<?=$p["menu_id"]?>,"<?=htmlspecialchars(addslashes($p["name"]),ENT_QUOTES)?>",<?=$p["price"]?>,"<?=$p["category"]?>","<?=htmlspecialchars(addslashes($p["description"]),ENT_QUOTES)?>",<?=$p["stock"]?>,<?=$p["is_new"]?>,<?=$p["is_best"]?>,"<?=htmlspecialchars($p["image"]??"",ENT_QUOTES)?>")'
-                  style="width:32px;height:32px;border-radius:var(--radius-md);border:1px solid var(--border);background:none;display:flex;align-items:center;justify-content:center;color:var(--text-muted);cursor:pointer;">
+                <button onclick="openEditModal(this, <?= (int)$p['id'] ?>)"
+                  data-name="<?= htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8') ?>"
+                  data-price="<?= (int)$p['price'] ?>"
+                  data-category="<?= htmlspecialchars($p['category'], ENT_QUOTES, 'UTF-8') ?>"
+                  data-desc="<?= htmlspecialchars($p['description'], ENT_QUOTES, 'UTF-8') ?>"
+                  data-stock="<?= (int)$p['stock'] ?>"
+                  data-is-new="<?= (int)$p['is_new'] ?>"
+                  data-is-best="<?= (int)$p['is_best'] ?>"
+                  data-image="<?= htmlspecialchars($p['image'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                  style="width:32px;height:32px;border-radius:var(--radius-md);border:1px solid var(--border);background:none;display:flex;align-items:center;justify-content:center;color:var(--text-muted);cursor:pointer;" title="Edit">
                   <i class="bi bi-pencil" style="font-size:.8rem;"></i>
                 </button>
-                <button onclick="if(confirm('Hapus produk ini?'))window.location.href='products.php?delete=<?=$p["menu_id"]?>'"
-                  style="width:32px;height:32px;border-radius:var(--radius-md);border:1px solid var(--border);background:none;display:flex;align-items:center;justify-content:center;color:var(--text-muted);cursor:pointer;">
+                <button onclick="openDeleteModal(this, <?= (int)$p['id'] ?>)"
+                  data-name="<?= htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8') ?>"
+                  style="width:32px;height:32px;border-radius:var(--radius-md);border:1px solid var(--border);background:none;display:flex;align-items:center;justify-content:center;color:var(--text-muted);cursor:pointer;" title="Delete">
                   <i class="bi bi-trash3" style="font-size:.8rem;"></i>
                 </button>
               </div>
@@ -289,7 +306,7 @@ $stats = [
           <div class="form-group"><label>Kategori *</label>
             <select name="category" required><option value="">Pilih kategori</option>
             <option value="coffee">Coffee</option><option value="non-coffee">Non-Coffee</option>
-            <option value="tea">Tea</option><option value="dessert">Dessert</option></select>
+            <option value="makanan">Makanan</option></select>
           </div>
         </div>
         <div class="form-group"><label>Deskripsi *</label><textarea name="description" required></textarea></div>
@@ -335,7 +352,7 @@ $stats = [
           <div class="form-group"><label>Kategori *</label>
             <select name="category" id="editCat" required>
             <option value="coffee">Coffee</option><option value="non-coffee">Non-Coffee</option>
-            <option value="tea">Tea</option><option value="dessert">Dessert</option></select>
+            <option value="makanan">Makanan</option></select>
           </div>
         </div>
         <div class="form-group"><label>Deskripsi *</label><textarea name="description" id="editDesc" required></textarea></div>
@@ -367,6 +384,33 @@ $stats = [
   </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal-box" style="max-width:360px;">
+    <div style="text-align:center;padding:1.5rem 1.5rem 1rem;">
+      <div style="width:56px;height:56px;border-radius:50%;background:#fff0f0;color:var(--danger);display:flex;align-items:center;justify-content:center;margin:0 auto .9rem;font-size:1.6rem;">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+      </div>
+      <div style="font-weight:700;font-size:1rem;color:var(--danger);margin-bottom:.4rem;">Yakin hapus produk ini?</div>
+      <div style="font-size:.83rem;color:var(--text-mid);line-height:1.5;">
+        <strong id="deleteProductName"></strong> akan dihapus permanen.<br>Tindakan ini tidak bisa dibatalkan.
+      </div>
+    </div>
+    <form method="POST" id="deleteForm">
+      <input type="hidden" name="action" value="delete">
+      <input type="hidden" name="id" id="deleteId">
+    </form>
+    <div style="display:flex;gap:.6rem;padding:0 1.5rem 1.5rem;">
+      <button type="button" onclick="closeModal('deleteModal')" class="btn-outline-brand" style="flex:1;font-size:.85rem;padding:.55rem;">
+        Batal
+      </button>
+      <button type="button" onclick="document.getElementById('deleteForm').submit()" class="btn-brand" style="flex:1;font-size:.85rem;padding:.55rem;background:var(--danger);">
+        <i class="bi bi-trash3 me-1"></i>Ya, Hapus
+      </button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 function openModal(id){document.getElementById(id).classList.add('open');}
@@ -390,27 +434,46 @@ function previewEditImage(input) {
   } else { img.style.display = 'none'; }
 }
 
-function openEditModal(id,name,price,cat,desc,stock,isNew,isBest,image){
-  document.getElementById('editId').value=id;
-  document.getElementById('editName').value=name;
-  document.getElementById('editPrice').value=price;
-  document.getElementById('editDesc').value=desc;
-  document.getElementById('editStock').value=stock;
-  document.getElementById('editIsNew').checked=isNew==1;
-  document.getElementById('editIsBest').checked=isBest==1;
-  
+function openEditModal(btn, id){
+  document.getElementById('editId').value = id;
+  document.getElementById('editName').value = btn.dataset.name;
+  document.getElementById('editPrice').value = btn.dataset.price;
+  document.getElementById('editDesc').value = btn.dataset.desc;
+  document.getElementById('editStock').value = btn.dataset.stock;
+  document.getElementById('editIsNew').checked = btn.dataset.isNew == '1';
+  document.getElementById('editIsBest').checked = btn.dataset.isBest == '1';
+
   const editImg = document.getElementById('editPreviewImg');
-  if (image && image.trim() !== '') {
-    editImg.src = '../../assets/img/products/' + image;
+  if (btn.dataset.image && btn.dataset.image.trim() !== '') {
+    editImg.src = '../../assets/img/products/' + btn.dataset.image;
     editImg.style.display = 'block';
   } else {
     editImg.src = 'https://placehold.co/400x200/1a3c2e/f0cb7a?text=Konnyusu';
     editImg.style.display = 'block';
   }
-  
-  const sel=document.getElementById('editCat');
-  for(let o of sel.options){o.selected=(o.value===cat);}
+
+  const sel = document.getElementById('editCat');
+  for(let o of sel.options){ o.selected = (o.value === btn.dataset.category); }
   openModal('editModal');
+}
+
+function openDeleteModal(btn, id) {
+  document.getElementById('deleteId').value = id;
+  document.getElementById('deleteProductName').textContent = btn.dataset.name;
+  openModal('deleteModal');
+}
+
+function showDeleteConfirm() {
+  closeModal('deleteModal');
+  openModal('deleteConfirmOverlay');
+}
+
+function closeDeleteConfirm() {
+  closeModal('deleteConfirmOverlay');
+}
+
+function confirmDelete() {
+  if (deleteFormRef) deleteFormRef.submit();
 }
 
 document.querySelectorAll('.modal-overlay').forEach(m=>{
@@ -438,6 +501,15 @@ function filterProducts() {
 
 searchInput.addEventListener('input', filterProducts);
 categoryFilter.addEventListener('change', filterProducts);
+</script>
+
+<!-- Hamburger Toggle Script -->
+<script>
+document.getElementById('hamburgerBtn')?.addEventListener('click', function() {
+  document.querySelectorAll('.admin-sidebar').forEach(function(sidebar) {
+    sidebar.classList.toggle('closed');
+  });
+});
 </script>
 </body>
 </html>

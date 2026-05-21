@@ -2,23 +2,82 @@
 // profile/profile.php
 session_start();
 include __DIR__ . '/../data/products.php';
+require_once __DIR__ . '/../config/auth.php';
+require_once __DIR__ . '/../config/order.php';
 
 $cartTotalItems = 0;
 if (isset($_SESSION['cart'])) {
     foreach ($_SESSION['cart'] as $item) $cartTotalItems += $item['quantity'];
 }
 
-$user = $_SESSION['user'] ?? ['name' => 'Pengguna', 'email' => 'user@email.com'];
-
-$saved = false;
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
-    $saved = true;
-    $user['name'] = htmlspecialchars($_POST['name'] ?? $user['name']);
-    $_SESSION['user'] = $user;
+$currentUser = getCurrentUser();
+if (!$currentUser) {
+    header('Location: ../auth/login.php');
+    exit;
 }
 
-// Demo stats
-$userStats = ['orders' => 12, 'points' => 1840, 'reviews' => 7, 'level' => 'Gold Member'];
+// Refresh user data after any update
+$currentUser = getCurrentUser();
+
+// Handle profile save
+$profileSaved = false;
+$profileError = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
+    $data = [
+        'name' => trim($_POST['name'] ?? ''),
+        'phone' => trim($_POST['phone'] ?? ''),
+        'birthdate' => trim($_POST['birthdate'] ?? ''),
+        'gender' => trim($_POST['gender'] ?? ''),
+        'bio' => trim($_POST['bio'] ?? ''),
+        'username' => trim($_POST['username'] ?? ''),
+        'address' => trim($_POST['address'] ?? '')
+    ];
+    if (!empty($data['name'])) {
+        if (updateUserProfile($currentUser['user_id'], $data)) {
+            $profileSaved = true;
+            $currentUser = getCurrentUser();
+        } else {
+            $profileError = 'Gagal menyimpan perubahan.';
+        }
+    }
+}
+
+// Handle password change
+$passwordMsg = '';
+$passwordMsgType = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
+    $result = changePassword($currentUser['user_id'], $_POST['old_password'] ?? '', $_POST['new_password'] ?? '');
+    if ($result['success']) {
+        $passwordMsg = 'Kata sandi berhasil diubah!';
+        $passwordMsgType = 'success';
+    } else {
+        $passwordMsg = $result['error'];
+        $passwordMsgType = 'error';
+    }
+}
+
+// Handle notification toggle
+$notifMsg = '';
+$notifMsgType = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_notifications'])) {
+    $enabled = isset($_POST['notifications_enabled']) ? true : false;
+    if (updateNotificationSetting($currentUser['user_id'], $enabled)) {
+        $notifMsg = 'Pengaturan notifikasi disimpan!';
+        $notifMsgType = 'success';
+        $currentUser = getCurrentUser();
+    } else {
+        $notifMsg = 'Gagal menyimpan pengaturan.';
+        $notifMsgType = 'error';
+    }
+}
+
+// Get real order count from database
+$orderCount = 0;
+if ($currentUser) {
+    $orders = getUserOrders($currentUser['user_id']);
+    $orderCount = count($orders);
+}
+$userStats = ['orders' => $orderCount];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -78,6 +137,13 @@ $userStats = ['orders' => 12, 'points' => 1840, 'reviews' => 7, 'level' => 'Gold
   .points-progress-labels { display:flex; justify-content:space-between; font-size:.7rem; color:rgba(255,255,255,.6); margin-top:.35rem; }
   /* Alert */
   .alert-success-inline { background:#ecfaf4; border:1px solid #a3e0c8; color:var(--success); border-radius:var(--radius-md); padding:.75rem 1rem; font-size:.85rem; margin-bottom:1rem; display:flex; align-items:center; gap:.5rem; }
+  /* Toggle switch */
+  .toggle-switch { position:relative; display:inline-flex; align-items:center; cursor:pointer; }
+  .toggle-switch input { opacity:0; width:0; height: 0; position: absolute; }
+  .toggle-track { width:42px; height:24px; background:var(--border); border-radius:12px; transition:background .2s; position:relative; flex-shrink:0; }
+  .toggle-knob { position:absolute; top:3px; left:3px; width:18px; height:18px; background:#fff; border-radius:50%; transition:left .2s; }
+  .toggle-switch input:checked + .toggle-track { background:var(--primary); }
+  .toggle-switch input:checked + .toggle-track .toggle-knob { left:21px; }
   @media(max-width:900px){ .profile-layout{grid-template-columns:1fr;} .profile-sidebar{position:static;} }
   @media(max-width:576px){ .form-grid{grid-template-columns:1fr;} .profile-stats{grid-template-columns:1fr 1fr;} }
   </style>
@@ -101,62 +167,31 @@ $userStats = ['orders' => 12, 'points' => 1840, 'reviews' => 7, 'level' => 'Gold
   <div class="profile-sidebar animate-fadeup">
     <div class="profile-card">
       <div class="profile-avatar">
-        <?= strtoupper($user['name'][0]) ?>
+        <?= strtoupper($currentUser['name'][0]) ?>
         <div class="profile-avatar__badge" title="Ganti foto"><i class="bi bi-camera-fill"></i></div>
       </div>
-      <div class="profile-name"><?= htmlspecialchars($user['name']) ?></div>
-      <div class="profile-email"><?= htmlspecialchars($user['email']) ?></div>
-      <div class="profile-level">
-        <i class="bi bi-award-fill"></i> <?= $userStats['level'] ?>
-      </div>
-      <div class="profile-stats">
+      <div class="profile-name"><?= htmlspecialchars($currentUser['name']) ?></div>
+      <div class="profile-email"><?= htmlspecialchars($currentUser['email']) ?></div>
+      <div class="profile-stats" style="grid-template-columns:1fr;">
         <div class="profile-stat">
           <div class="profile-stat__val"><?= $userStats['orders'] ?></div>
-          <div class="profile-stat__lbl">Pesanan</div>
-        </div>
-        <div class="profile-stat">
-          <div class="profile-stat__val"><?= number_format($userStats['points']) ?></div>
-          <div class="profile-stat__lbl">Poin</div>
-        </div>
-        <div class="profile-stat">
-          <div class="profile-stat__val"><?= $userStats['reviews'] ?></div>
-          <div class="profile-stat__lbl">Ulasan</div>
-        </div>
-        <div class="profile-stat">
-          <div class="profile-stat__val">4.9</div>
-          <div class="profile-stat__lbl">Rating</div>
+          <div class="profile-stat__lbl">Total Pesanan</div>
         </div>
       </div>
     </div>
 
     <div class="profile-nav">
       <a href="#info" class="active"><i class="bi bi-person"></i> Informasi Pribadi</a>
+      <a href="#notifications"><i class="bi bi-bell"></i> Notifikasi</a>
       <a href="#security"><i class="bi bi-shield-lock"></i> Keamanan</a>
       <a href="#address"><i class="bi bi-geo-alt"></i> Alamat Saya</a>
       <a href="../history/history.php"><i class="bi bi-clock-history"></i> Riwayat Pesanan</a>
-      <a href="#notifications"><i class="bi bi-bell"></i> Notifikasi</a>
       <a href="../auth/login.php" style="color:var(--danger);"><i class="bi bi-box-arrow-right"></i> Keluar</a>
     </div>
   </div>
 
   <!-- Main Content -->
   <div>
-    <!-- Points Banner -->
-    <div class="points-card animate-fadeup" style="animation-delay:.06s">
-      <h6>Poin Reward Anda</h6>
-      <div class="points-card__val"><?= number_format($userStats['points']) ?></div>
-      <div class="points-card__sub">Poin dapat ditukar dengan minuman gratis</div>
-      <div class="points-progress">
-        <div class="points-progress-bar">
-          <div class="points-progress-fill"></div>
-        </div>
-        <div class="points-progress-labels">
-          <span>Gold Member</span>
-          <span><?= 2500 - $userStats['points'] ?> poin lagi ke Platinum</span>
-        </div>
-      </div>
-    </div>
-
     <!-- Personal Info -->
     <div class="profile-section animate-fadeup" id="info" style="animation-delay:.1s">
       <div class="profile-section__header">
@@ -164,48 +199,54 @@ $userStats = ['orders' => 12, 'points' => 1840, 'reviews' => 7, 'level' => 'Gold
         <span class="k-badge k-badge-green"><i class="bi bi-check-circle-fill"></i> Terverifikasi</span>
       </div>
       <div class="profile-section__body">
-        <?php if ($saved): ?>
+        <?php if ($profileSaved): ?>
         <div class="alert-success-inline"><i class="bi bi-check-circle-fill"></i> Profil berhasil diperbarui!</div>
         <?php endif; ?>
         <form method="POST" action="">
           <div class="form-grid">
             <div class="form-group">
               <label>Nama Lengkap</label>
-              <input type="text" name="name" value="<?= htmlspecialchars($user['name']) ?>" required>
+              <input type="text" name="name" value="<?= htmlspecialchars($currentUser['name']) ?>" required>
             </div>
             <div class="form-group">
               <label>Username</label>
-              <input type="text" name="username" placeholder="@username" value="@<?= strtolower(str_replace(' ', '', $user['name'])) ?>">
+              <input type="text" name="username" placeholder="@username" value="<?= htmlspecialchars($currentUser["username"] ?? "") ?>">
             </div>
           </div>
           <div class="form-grid">
             <div class="form-group">
               <label>Alamat Email</label>
-              <input type="email" name="email" value="<?= htmlspecialchars($user['email']) ?>" disabled>
+              <input type="email" name="email" value="<?= htmlspecialchars($currentUser['email']) ?>" disabled>
             </div>
             <div class="form-group">
               <label>Nomor HP</label>
-              <input type="tel" name="phone" placeholder="08xx-xxxx-xxxx" value="0812-3456-7890">
+              <input type="tel" name="phone" placeholder="08xx-xxxx-xxxx" value="<?= htmlspecialchars($currentUser["phone"] ?? "") ?>">
             </div>
           </div>
           <div class="form-grid">
             <div class="form-group">
               <label>Tanggal Lahir</label>
-              <input type="date" name="birthdate" value="1998-06-15">
+              <input type="date" name="birthdate" value="<?= htmlspecialchars($currentUser["birthdate"] ?? "") ?>">
             </div>
             <div class="form-group">
               <label>Jenis Kelamin</label>
               <select name="gender">
-                <option value="male">Laki-laki</option>
-                <option value="female">Perempuan</option>
-                <option value="other">Lainnya</option>
+                <option value="male"<?= ($currentUser["gender"] ?? "") === "male" ? " selected" : "" ?>>Laki-laki</option>
+                <option value="female"<?= ($currentUser["gender"] ?? "") === "female" ? " selected" : "" ?>>Perempuan</option>
+                <option value=""<?= ($currentUser["gender"] ?? "") === "other" ? " selected" : "" ?>>Lainnya</option>
               </select>
             </div>
           </div>
           <div class="form-grid single">
             <div class="form-group">
+              <label>Alamat</label>
+              <textarea name="address" placeholder="Masukkan alamat lengkap Anda" style="min-height: 80px;"><?= htmlspecialchars($currentUser["address"] ?? "") ?></textarea>
+            </div>
+          </div>
+          <div class="form-grid single">
+            <div class="form-group">
               <label>Bio Singkat (Opsional)</label>
-              <input type="text" name="bio" placeholder="Pecinta kopi, matcha enthusiast..." value="">
+              <input type="text" name="bio" placeholder="Pecinta kopi, matcha enthusiast..." value="<?= htmlspecialchars($currentUser["bio"] ?? "") ?>">
             </div>
           </div>
           <div style="display:flex;justify-content:flex-end;gap:.75rem;margin-top:.5rem;">
@@ -218,64 +259,52 @@ $userStats = ['orders' => 12, 'points' => 1840, 'reviews' => 7, 'level' => 'Gold
       </div>
     </div>
 
+    <!-- Notifications -->
+    <div class="profile-section animate-fadeup" id="notifications" style="animation-delay:.12s">
+      <div class="profile-section__header">
+        <h5 class="profile-section__title"><i class="bi bi-bell me-2"></i>Pengaturan Notifikasi</h5>
+      </div>
+      <div class="profile-section__body">
+        <?php if (!empty($notifMsg)): ?>
+        <div style="background:<?= $notifMsgType === "success" ? "#ecfaf4" : "#fff0f0" ?>;border:1px solid <?= $notifMsgType === "success" ? "#a3e0c8" : "#f5b8b8" ?>;color:<?= $notifMsgType === "success" ? "var(--success)" : "var(--danger)" ?>;border-radius:var(--radius-md);padding:.75rem 1rem;font-size:.85rem;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;">
+          <i class="bi <?= $notifMsgType === "success" ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill" ?>"></i> <?= htmlspecialchars($notifMsg) ?>
+        </div>
+        <?php endif; ?>
+        <form method="POST" action="">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:.85rem 0;border-bottom:1px solid var(--border);">
+            <div>
+              <div style="font-weight:600;font-size:.9rem;color:var(--primary);">Notifikasi Pesanan</div>
+              <div style="font-size:.78rem;color:var(--text-muted);">Dapatkan pemberitahuan saat pesanan diperbarui</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" name="notifications_enabled" <?= (isset($currentUser["notifications_enabled"]) && $currentUser["notifications_enabled"]) ? "checked" : "" ?>>
+              <span class="toggle-track">
+                <span class="toggle-knob"></span>
+              </span>
+            </label>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:.75rem;margin-top:1rem;">
+            <button type="submit" name="toggle_notifications" class="btn-brand" style="font-size:.85rem;padding:.6rem 1.4rem;">
+              <i class="bi bi-check-lg me-1"></i> Simpan Pengaturan
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Security -->
     <div class="profile-section animate-fadeup" id="security" style="animation-delay:.15s">
       <div class="profile-section__header">
         <h5 class="profile-section__title"><i class="bi bi-shield-lock me-2"></i>Keamanan Akun</h5>
       </div>
       <div class="profile-section__body">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:.85rem 0;border-bottom:1px solid var(--border);">
-          <div>
-            <div style="font-weight:600;font-size:.9rem;color:var(--primary);">Kata Sandi</div>
-            <div style="font-size:.78rem;color:var(--text-muted);">Terakhir diubah 30 hari lalu</div>
-          </div>
-          <button class="btn-sm-outline" onclick="alert('Fitur ubah kata sandi tersedia di versi penuh')">Ubah Sandi</button>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:.85rem 0;border-bottom:1px solid var(--border);">
-          <div>
-            <div style="font-weight:600;font-size:.9rem;color:var(--primary);">Autentikasi 2 Faktor</div>
-            <div style="font-size:.78rem;color:var(--text-muted);">Tingkatkan keamanan akun Anda</div>
-          </div>
-          <span class="k-badge k-badge-red">Belum Aktif</span>
-        </div>
         <div style="display:flex;align-items:center;justify-content:space-between;padding:.85rem 0;">
           <div>
-            <div style="font-weight:600;font-size:.9rem;color:var(--primary);">Sesi Aktif</div>
-            <div style="font-size:.78rem;color:var(--text-muted);">1 perangkat aktif</div>
+            <div style="font-weight:600;font-size:.9rem;color:var(--primary);">Kata Sandi</div>
+            <div style="font-size:.78rem;color:var(--text-muted);">Ubah kata sandi akun Anda</div>
           </div>
-          <button class="btn-sm-outline">Lihat Sesi</button>
+          <button class="btn-brand" style="font-size:.78rem;padding:.4rem .9rem;" onclick="openPasswordModal()"><i class="bi bi-key me-1"></i>Ubah Sandi</button>
         </div>
-      </div>
-    </div>
-
-    <!-- Notification Settings -->
-    <div class="profile-section animate-fadeup" id="notifications" style="animation-delay:.2s">
-      <div class="profile-section__header">
-        <h5 class="profile-section__title"><i class="bi bi-bell me-2"></i>Pengaturan Notifikasi</h5>
-      </div>
-      <div class="profile-section__body">
-        <?php
-        $notifs = [
-          ['Status Pesanan', 'Notifikasi saat pesanan diproses atau dikirim', true],
-          ['Promo & Diskon', 'Info penawaran eksklusif dan diskon spesial', true],
-          ['Reward Poin', 'Notifikasi saat mendapat atau menggunakan poin', true],
-          ['Newsletter', 'Artikel & tips seputar kopi dan minuman', false],
-        ];
-        foreach ($notifs as $n):
-        ?>
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 0;border-bottom:1px solid var(--border);">
-          <div>
-            <div style="font-weight:600;font-size:.88rem;color:var(--primary);"><?= $n[0] ?></div>
-            <div style="font-size:.75rem;color:var(--text-muted);"><?= $n[1] ?></div>
-          </div>
-          <label style="position:relative;display:inline-flex;align-items:center;cursor:pointer;">
-            <input type="checkbox" <?= $n[2]?'checked':'' ?> style="opacity:0;width:0;height:0;position:absolute;">
-            <span class="toggle-track" style="width:42px;height:24px;background:<?= $n[2]?'var(--primary)':'var(--border)' ?>;border-radius:12px;transition:background .2s;flex-shrink:0;position:relative;">
-              <span style="position:absolute;top:3px;left:<?= $n[2]?'21px':'3px' ?>;width:18px;height:18px;background:#fff;border-radius:50%;transition:left .2s;"></span>
-            </span>
-          </label>
-        </div>
-        <?php endforeach; ?>
       </div>
     </div>
 
@@ -283,23 +312,55 @@ $userStats = ['orders' => 12, 'points' => 1840, 'reviews' => 7, 'level' => 'Gold
 </div>
 </div>
 
-<?php include __DIR__ . '/../layouts/footer.php'; ?>
+
+<!-- Password Change Modal -->
+<div id="passwordModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--white);border-radius:var(--radius-lg);max-width:420px;width:100%;animation:fadeUp .3s;">
+    <div style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <h5 style="font-size:1rem;font-weight:700;color:var(--primary);margin:0;"><i class="bi bi-key me-2"></i>Ubah Kata Sandi</h5>
+      <button onclick="closePasswordModal()" style="background:none;border:none;font-size:1.25rem;cursor:pointer;color:var(--text-muted);">x</button>
+    </div>
+    <form method="POST" action="">
+      <div style="padding:1.5rem;">
+        <?php if (!empty($passwordMsg)): ?>
+        <div style="background:<?= $passwordMsgType === "success" ? "#ecfaf4" : "#fff0f0" ?>;border:1px solid <?= $passwordMsgType === "success" ? "#a3e0c8" : "#f5b8b8" ?>;color:<?= $passwordMsgType === "success" ? "var(--success)" : "var(--danger)" ?>;border-radius:var(--radius-md);padding:.75rem 1rem;font-size:.85rem;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;">
+          <i class="bi <?= $passwordMsgType === "success" ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill" ?>"></i> <?= htmlspecialchars($passwordMsg) ?>
+        </div>
+        <?php endif; ?>
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label style="display:block;font-size:.8rem;font-weight:600;color:var(--text-mid);margin-bottom:.4rem;">Kata Sandi Lama</label>
+          <input type="password" name="old_password" placeholder="Masukkan kata sandi lama" required style="width:100%;background:var(--cream);border:1.5px solid var(--border);border-radius:var(--radius-md);padding:.7rem 1rem;font-family:var(--font-body);font-size:.88rem;color:var(--text-dark);outline:none;">
+        </div>
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label style="display:block;font-size:.8rem;font-weight:600;color:var(--text-mid);margin-bottom:.4rem;">Kata Sandi Baru <small style="font-weight:400;color:var(--text-muted);">minimal 6 karakter</small></label>
+          <input type="password" name="new_password" placeholder="Masukkan kata sandi baru" required minlength="6" style="width:100%;background:var(--cream);border:1.5px solid var(--border);border-radius:var(--radius-md);padding:.7rem 1rem;font-family:var(--font-body);font-size:.88rem;color:var(--text-dark);outline:none;">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label style="display:block;font-size:.8rem;font-weight:600;color:var(--text-mid);margin-bottom:.4rem;">Konfirmasi Sandi Baru</label>
+          <input type="password" name="confirm_password" placeholder="Ulangi kata sandi baru" required minlength="6" style="width:100%;background:var(--cream);border:1.5px solid var(--border);border-radius:var(--radius-md);padding:.7rem 1rem;font-family:var(--font-body);font-size:.88rem;color:var(--text-dark);outline:none;">
+        </div>
+      </div>
+      <div style="padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.75rem;">
+        <button type="button" onclick="closePasswordModal()" class="btn-outline-brand" style="font-size:.85rem;padding:.55rem 1.2rem;">Batal</button>
+        <button type="submit" name="change_password" class="btn-brand" style="font-size:.85rem;padding:.6rem 1.4rem;"><i class="bi bi-check-lg me-1"></i>Simpan Sandi</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+</style>
+
+<script>
+function openPasswordModal() { document.getElementById("passwordModal").style.display = "flex"; }
+function closePasswordModal() { document.getElementById("passwordModal").style.display = "none"; }
+document.getElementById("passwordModal").addEventListener("click", function(e){ if(e.target === this) closePasswordModal(); });
+</script>
+
+    <?php include __DIR__ . '/../layouts/footer.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// Toggle switches
-document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-  cb.addEventListener('change', function() {
-    const track = this.nextElementSibling;
-    const knob  = track.querySelector('span');
-    if (this.checked) {
-      track.style.background = 'var(--primary)';
-      knob.style.left = '21px';
-    } else {
-      track.style.background = 'var(--border)';
-      knob.style.left = '3px';
-    }
-  });
-});
 // Smooth scroll for nav
 document.querySelectorAll('.profile-nav a[href^="#"]').forEach(a => {
   a.addEventListener('click', function(e) {

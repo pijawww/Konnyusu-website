@@ -58,7 +58,17 @@ foreach ($ordersData as $ord) {
         'items' => $items,
         'total' => $ord['total'],
         'payment' => 'QRIS',
-        'rating' => null
+        'rating' => null,
+        'cancellation_note' => $ord['cancellation_note'] ?? '',
+        'cancelled_by_admin' => isset($ord['cancelled_by_admin']) ? (bool)$ord['cancelled_by_admin'] : false,
+        'recipient_name' => $ord['recipient_name'] ?? '',
+        'recipient_phone' => $ord['recipient_phone'] ?? '',
+        'recipient_address' => $ord['recipient_address'] ?? '',
+        'recipient_city' => $ord['recipient_city'] ?? '',
+        'recipient_postal' => $ord['recipient_postal'] ?? '',
+        'order_type' => $ord['order_type'] ?? 'dine_in',
+        'delivery_fee' => $ord['delivery_fee'] ?? 0,
+        'tax' => $ord['tax'] ?? 0
     ];
 }
 
@@ -132,6 +142,25 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
   /* Empty */
   .empty-history { text-align:center; padding:4rem 2rem; background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); }
   .empty-history span { font-size:3.5rem; display:block; margin-bottom:1rem; }
+  /* Detail Modal */
+  .detail-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9999; display:none; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+  .detail-modal-overlay.open { display:flex; }
+  .detail-modal-box { background:var(--white); border-radius:var(--radius-lg); width:100%; max-width:500px; max-height:90vh; overflow-y:auto; animation:fadeUp .3s ease; }
+  .detail-modal-header { padding:1.25rem 1.5rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .detail-modal-header h5 { font-size:1rem; font-weight:700; color:var(--primary); margin:0; }
+  .detail-modal-body { padding:1.5rem; }
+  .detail-modal-footer { padding:1rem 1.5rem; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:.75rem; }
+  .detail-row { display:flex; justify-content:space-between; padding:.5rem 0; border-bottom:1px solid var(--border); font-size:.85rem; }
+  .detail-row:last-child { border-bottom:none; }
+  .detail-row span:first-child { color:var(--text-muted); }
+  .detail-row span:last-child { font-weight:600; color:var(--primary); }
+  .print-only-detail { display:none; }
+  @media print {
+    .kny-navbar, .page-content > div:first-child, .hist-stats, .filter-tabs, .order-card__footer .order-actions, .detail-modal-header, .detail-modal-footer { display:none!important; }
+    .detail-modal-overlay { position:static; background:none; backdrop-filter:none; display:block!important; }
+    .detail-modal-box { max-width:100%; box-shadow:none; border:none; }
+    .print-only-detail { display:block; text-align:center; margin-bottom:1.5rem; padding-bottom:1rem; border-bottom:1px dashed var(--border); }
+  }
   @media(max-width:576px){ .hist-stats{grid-template-columns:1fr 1fr;} .hist-stat:last-child{grid-column:1/-1;} }
   </style>
 </head>
@@ -248,6 +277,16 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
             <span style="font-size:.72rem;color:var(--text-muted);margin-left:.25rem;">Ulasan Anda</span>
           </div>
           <?php endif; ?>
+          <?php if ($order['status'] === 'Dibatalkan' && !empty($order['cancellation_note'])): ?>
+          <div style="margin-top:.5rem;padding:.5rem .75rem;background:#fdf0f0;border-radius:var(--radius-sm);border:1px solid #f5b8b8;">
+            <div style="font-size:.7rem;font-weight:600;color:var(--danger);margin-bottom:.25rem;"><i class="bi bi-x-octagon me-1"></i>Dibatalkan oleh Admin</div>
+            <div style="font-size:.78rem;color:var(--text-dark);"><?= htmlspecialchars($order['cancellation_note']) ?></div>
+          </div>
+          <?php elseif ($order['status'] === 'Dibatalkan'): ?>
+          <div style="margin-top:.5rem;padding:.5rem .75rem;background:#fdf0f0;border-radius:var(--radius-sm);border:1px solid #f5b8b8;">
+            <div style="font-size:.78rem;color:var(--danger);"><i class="bi bi-x-octagon me-1"></i>Pesanan ini telah dibatalkan</div>
+          </div>
+          <?php endif; ?>
         </div>
         <div class="order-actions">
           <?php if(in_array($order['order_status'], ['shipped', 'processing'])): ?>
@@ -255,7 +294,7 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
             <i class="bi bi-check-circle"></i> Pesanan Diterima
           </a>
           <?php endif; ?>
-          <button class="btn-sm-outline"><i class="bi bi-receipt"></i> Detail</button>
+          <button class="btn-sm-outline" onclick="showOrderDetail(<?= htmlspecialchars(json_encode($order)) ?>)"><i class="bi bi-receipt"></i> Detail</button>
           <a href="repeat-order.php?order_id=<?= $order['order_id'] ?>"
              class="btn-sm-brand"><i class="bi bi-arrow-clockwise"></i> Pesan Lagi</a>
         </div>
@@ -269,6 +308,21 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
 </div>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>
+
+<!-- Order Detail Modal -->
+<div class="detail-modal-overlay" id="orderDetailModal">
+  <div class="detail-modal-box">
+    <div class="detail-modal-header">
+      <h5><i class="bi bi-receipt me-2"></i>Detail Pesanan <span id="detailOrderId" style="font-family:monospace;"></span></h5>
+      <button onclick="closeDetailModal()" style="background:none;border:none;font-size:1.25rem;cursor:pointer;color:var(--text-muted);">×</button>
+    </div>
+    <div class="detail-modal-body" id="detailModalBody"></div>
+    <div class="detail-modal-footer">
+      <button onclick="closeDetailModal()" class="btn-outline-brand" style="font-size:.85rem;padding:.55rem 1.1rem;">Tutup</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 // Filter tabs
@@ -294,6 +348,118 @@ const io = new IntersectionObserver(entries => {
   entries.forEach(e => { if(e.isIntersecting){ e.target.style.opacity='1'; e.target.style.transform='none'; io.unobserve(e.target); }});
 }, {threshold:0.08});
 reveals.forEach(el => { el.style.opacity='0'; el.style.transform='translateY(18px)'; el.style.transition='opacity .5s ease, transform .5s ease'; io.observe(el); });
+
+// Order Detail Modal Functions
+function showOrderDetail(order) {
+  document.getElementById('detailOrderId').textContent = order.id;
+
+  let itemsHtml = '';
+  order.items.forEach(function(item) {
+    const itemTotal = item.price * item.qty;
+    itemsHtml += '<div style="display:flex;justify-content:space-between;padding:.4rem 0;font-size:.85rem;border-bottom:1px solid var(--border);">' +
+      '<span style="color:var(--text-mid);">' + item.name + ' x' + item.qty + '</span>' +
+      '<span style="font-weight:600;color:var(--primary);">Rp ' + itemTotal.toLocaleString('id') + '</span>' +
+    '</div>';
+  });
+
+  const paymentMethodNames = {
+    'qris': 'QRIS',
+    'gopay': 'GoPay',
+    'ovo': 'OVO',
+    'dana': 'DANA',
+    'bca': 'BCA Transfer',
+    'cod': 'Bayar di Tempat',
+    'cash': 'Tunai'
+  };
+
+  const orderTypeNames = {
+    'dine_in': 'Makan di Tempat',
+    'takeaway': 'Ambil Sendiri',
+    'delivery': 'Pengiriman',
+    'priority': 'Prioritas (< 20 menit)',
+    'standard': 'Standar (30 menit)',
+    'pickup': 'Ambil Sendiri',
+    'instant': 'Prioritas (< 20 menit)',
+    'same_day': 'Standar (30 menit)'
+  };
+
+  const paymentMethodDisplay = paymentMethodNames[order.payment] || order.payment;
+  const orderTypeDisplay = orderTypeNames[order.order_type] || order.order_type;
+  let deliveryFeeDisplay;
+  const isPickup = order.order_type === 'pickup' || order.order_type === 'takeaway';
+  if (isPickup) {
+    deliveryFeeDisplay = ' - Gratis';
+  } else if (order.delivery_fee > 0) {
+    deliveryFeeDisplay = ' - Rp ' + order.delivery_fee.toLocaleString('id');
+  } else {
+    deliveryFeeDisplay = ' - Gratis';
+  }
+  const orderTypeWithFee = orderTypeDisplay + deliveryFeeDisplay;
+
+  const subtotal = order.total - (order.delivery_fee || 0) - (order.tax || 0);
+
+  let cancellationNoteHtml = '';
+  if (order.status === 'Dibatalkan' && order.cancellation_note) {
+    cancellationNoteHtml = '<div style="background:#fdf0f0;border-radius:var(--radius-md);padding:1rem;margin-top:1rem;border:1px solid #f5b8b8;">' +
+      '<div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--danger);margin-bottom:.6rem;"><i class="bi bi-x-octagon me-1"></i>Dibatalkan oleh Admin</div>' +
+      '<p style="font-size:.85rem;color:var(--text-dark);margin:0;line-height:1.5;">' + order.cancellation_note + '</p>' +
+    '</div>';
+  } else if (order.status === 'Dibatalkan') {
+    cancellationNoteHtml = '<div style="background:#fdf0f0;border-radius:var(--radius-md);padding:1rem;margin-top:1rem;border:1px solid #f5b8b8;">' +
+      '<div style="font-size:.85rem;color:var(--danger);"><i class="bi bi-x-octagon me-1"></i>Pesanan ini telah dibatalkan</div>' +
+    '</div>';
+  }
+
+  document.getElementById('detailModalBody').innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">' +
+      '<span class="k-badge ' + (order.status === 'Selesai' ? 'k-badge-green' : (order.status === 'Dibatalkan' ? 'k-badge-red' : 'k-badge-accent')) + '">' +
+        '<i class="bi ' + (order.status === 'Selesai' ? 'bi-check-circle-fill' : (order.status === 'Dibatalkan' ? 'bi-x-circle-fill' : 'bi-clock-fill')) + '"></i> ' + order.status +
+      '</span>' +
+      '<span style="font-size:.78rem;color:var(--text-muted);">' + order.date + '</span>' +
+    '</div>' +
+    (order.recipient_name ?
+    '<div style="background:var(--cream);border-radius:var(--radius-md);padding:1rem;margin-bottom:1rem;">' +
+      '<div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.6rem;">Informasi Pengiriman</div>' +
+      '<div class="detail-row"><span>Nama</span><span>' + (order.recipient_name || '-') + '</span></div>' +
+      '<div class="detail-row"><span>Telepon</span><span>' + (order.recipient_phone || '-') + '</span></div>' +
+      '<div class="detail-row"><span>Alamat</span><span style="max-width:200px;text-align:right;">' + (order.recipient_address || '-') + '</span></div>' +
+      (order.recipient_city ? '<div class="detail-row"><span>Kota</span><span>' + order.recipient_city + '</span></div>' : '') +
+      (order.recipient_postal ? '<div class="detail-row"><span>Kode Pos</span><span>' + order.recipient_postal + '</span></div>' : '') +
+    '</div>' : '') +
+    '<div style="background:var(--cream);border-radius:var(--radius-md);padding:1rem;margin-bottom:1rem;">' +
+      '<div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.6rem;">Detail Pesanan</div>' +
+      '<div class="detail-row"><span>Metode Pengiriman</span><span>' + orderTypeWithFee + '</span></div>' +
+      '<div class="detail-row"><span>Metode Pembayaran</span><span>' + paymentMethodDisplay + '</span></div>' +
+    '</div>' +
+    '<div style="background:var(--cream);border-radius:var(--radius-md);padding:1rem;margin-bottom:1rem;">' +
+      '<div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.6rem;">Item Pesanan</div>' +
+      itemsHtml +
+      '<div style="border-top:1px solid var(--border);margin-top:.5rem;padding-top:.5rem;">' +
+        '<div class="detail-row"><span>Subtotal</span><span>Rp ' + subtotal.toLocaleString('id') + '</span></div>' +
+        '<div class="detail-row"><span>Ongkos Kirim</span><span>Rp ' + (order.delivery_fee || 0).toLocaleString('id') + '</span></div>' +
+        '<div class="detail-row"><span>Pajak (1%)</span><span>Rp ' + (order.tax || 0).toLocaleString('id') + '</span></div>' +
+        '<div style="border-top:2px solid var(--border);margin-top:.5rem;padding-top:.5rem;display:flex;justify-content:space-between;">' +
+          '<span style="font-weight:700;color:var(--primary);">Total</span>' +
+          '<span style="font-weight:800;color:var(--primary);font-size:1.05rem;">Rp ' + order.total.toLocaleString('id') + '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    cancellationNoteHtml +
+    '<div class="print-only-detail" style="text-align:center;margin-top:2rem;padding-top:1rem;border-top:1px dashed var(--border);">' +
+      '<p style="font-size:.85rem;color:var(--text-muted);margin:0;">Terima kasih sudah memesan di Konnyusu!</p>' +
+      '<p style="font-size:.75rem;color:var(--text-muted);margin:.25rem 0 0 0;">— Semoga harimu menyenangkan —</p>' +
+    '</div>';
+
+  document.getElementById('orderDetailModal').classList.add('open');
+}
+
+function closeDetailModal() {
+  document.getElementById('orderDetailModal').classList.remove('open');
+}
+
+document.getElementById('orderDetailModal').addEventListener('click', function(e) {
+  if (e.target === this) closeDetailModal();
+});
 </script>
 </body>
 </html>

@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../data/products.php';
 requireAdmin();
 
 $completeStats = getCompleteStats();
+$statsComparison = getStatsComparison();
 $recentOrders = getRecentOrders(5);
 $topProducts = getTopSellingProducts(5);
 $weeklyRevenue = getWeeklyRevenue();
@@ -35,8 +36,6 @@ $statusColor = [
     'completed'  => 'k-badge-green',
     'cancelled'  => 'k-badge-red',
 ];
-
-
 
 function getStatusLabel(string $status): string {
     $labels = [
@@ -69,8 +68,27 @@ function timeAgo(string $datetime): string {
   <link rel="stylesheet" href="../../assets/css/global.css">
   <style>
   .admin-layout { display:flex; min-height:100vh; }
-  .admin-sidebar { width:240px; flex-shrink:0; background:var(--primary); display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow-y:auto; }
-  .sidebar-brand { padding:1.8rem 1rem; border-bottom:1px solid rgba(255,255,255,.1); display:flex; align-items:center; justify-content:center; }
+  .admin-sidebar {
+  width:240px;
+  flex-shrink:0;
+  background:var(--primary);
+  display:flex;
+  flex-direction:column;
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow-y:auto;
+  transform:translateX(0);
+  transition:transform .3s ease;
+  z-index:999;
+}
+.admin-sidebar.closed {
+  transform:translateX(-100%);
+  position:fixed;
+  left:0;
+  box-shadow:4px 0 20px rgba(0,0,0,.15);
+}
+.sidebar-brand { padding:1.8rem 1rem; border-bottom:1px solid rgba(255,255,255,.1); display:flex; align-items:center; justify-content:center; }
   .sidebar-brand-text { font-family:var(--font-display); font-size:1.3rem;font-weight:700;color:#fff; }
   .sidebar-nav { padding:1.25rem 0; flex:1; }
   .sidebar-section-label { font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);padding:.5rem 1.25rem;margin-bottom:.25rem; }
@@ -85,7 +103,13 @@ function timeAgo(string $datetime): string {
   .admin-main { flex:1; overflow-x:hidden; }
   .admin-topbar { background:var(--white);border-bottom:1px solid var(--border);padding:.9rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:1rem; }
   .admin-topbar h6 { font-size:.95rem;font-weight:700;color:var(--primary);margin:0; }
-  .admin-body { padding:2rem; }
+.admin-topbar__left { display:flex;align-items:center;gap:.75rem; }
+.hamburger-btn { background:none;border:none;cursor:pointer;padding:.5rem;border-radius:var(--radius-sm);transition:background .2s; }
+.hamburger-btn:hover { background:var(--cream); }
+.hamburger-btn span { display:block;width:22px;height:2px;background:var(--primary);border-radius:2px;transition:all .25s; }
+.hamburger-btn span:nth-child(2) { margin:.45rem 0; }
+.admin-sidebar { transition:transform .3s ease; }
+.admin-body { padding:2rem; padding-top: 1.5rem; }
   .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(185px,1fr)); gap:1.1rem; margin-bottom:2rem; }
   .stat-card { background:var(--white); border-radius:var(--radius-lg); border:1px solid var(--border); padding:1.25rem; display:flex; align-items:flex-start; gap:.9rem; transition:transform .2s,box-shadow .2s; }
   .stat-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-md); }
@@ -157,7 +181,14 @@ function timeAgo(string $datetime): string {
 
   <div class="admin-main">
     <div class="admin-topbar">
-      <h6>Dashboard</h6>
+      <div class="admin-topbar__left">
+        <button class="hamburger-btn" id="hamburgerBtn" aria-label="Menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <h6>Dashboard</h6>
+      </div>
       <div style="position:relative;max-width:280px;flex:1;">
         <i class="bi bi-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);"></i>
         <input type="text" placeholder="Cari pesanan, produk..." style="width:100%;background:var(--cream);border:1.5px solid var(--border);border-radius:40px;padding:.5rem .9rem .5rem 2.3rem;font-family:var(--font-body);font-size:.85rem;outline:none;">
@@ -198,26 +229,42 @@ function timeAgo(string $datetime): string {
     </div>
 
     <div class="admin-body">
-      <div class="d-flex justify-content-between align-items-center mb-4">
+      <div class="d-flex justify-content-start align-items-center mb-4">
         <div>
           <h4 style="font-size:1.4rem;font-weight:700;color:var(--primary);margin-bottom:.2rem;">Selamat Datang, Admin 👋</h4>
           <p style="font-size:.85rem;color:var(--text-muted);margin:0;"><?= date('l, d F Y') ?></p>
         </div>
-        <a href="../orders/orders.php" class="btn-brand" style="font-size:.85rem;padding:.6rem 1.2rem;text-decoration:none;">
-          <i class="bi bi-plus-lg me-1"></i> Pesanan Baru
-        </a>
       </div>
 
       <!-- Stat cards -->
       <div class="stat-grid animate-fadeup">
         <?php
+        // Total orders comparison
+        $ordersChg = $statsComparison['orders_change'];
+        $ordersChgLabel = $ordersChg > 0 ? "+{$ordersChg}% bulan ini" : ($ordersChg < 0 ? "{$ordersChg}% berkurang" : "Tidak berubah");
+        $ordersUp = $ordersChg >= 0;
+        
+        // Pending orders comparison
+        $pendingChg = $statsComparison['pending_change'];
+        $pendingChgLabel = $pendingChg > 0 ? "+{$pendingChg} baru" : ($pendingChg < 0 ? "{$pendingChg} berkurang" : "Tidak berubah");
+        $pendingUp = $pendingChg <= 0;
+        
+        // Revenue comparison
+        $revenueChg = $statsComparison['revenue_change'];
+        $revenueChgLabel = $revenueChg > 0 ? "+{$revenueChg}% bulan ini" : ($revenueChg < 0 ? "{$revenueChg}% berkurang" : "Tidak berubah");
+        $revenueUp = $revenueChg >= 0;
+        
+        // Customers this month
+        $customersThisMonth = $statsComparison['customers_this_month'];
+        $customersChgLabel = "+{$customersThisMonth} baru";
+        $customersUp = true;
+        
         $statData = [
-          ['icon'=>'bi-receipt-cutoff','cls'=>'green','val'=>number_format($stats['total_orders']),'lbl'=>'Total Pesanan','chg'=>'+12% bulan ini','up'=>true],
-          ['icon'=>'bi-clock','cls'=>'red','val'=>$stats['pending_orders'],'lbl'=>'Pesanan Menunggu','chg'=>'-3 berkurang','up'=>false],
-          ['icon'=>'bi-cash-stack','cls'=>'amber','val'=>'Rp '.number_format($stats['total_revenue']/1000000,1).'Jt','lbl'=>'Total Pendapatan','chg'=>'+18% bulan ini','up'=>true],
-          ['icon'=>'bi-people','cls'=>'blue','val'=>$stats['total_customers'],'lbl'=>'Total Pelanggan','chg'=>'+24 baru','up'=>true],
-          ['icon'=>'bi-cup-hot','cls'=>'purple','val'=>$stats['total_products'],'lbl'=>'Total Produk','chg'=>'2 baru','up'=>true],
-          ['icon'=>'bi-star-fill','cls'=>'teal','val'=>$stats['avg_rating'],'lbl'=>'Rating Rata-rata','chg'=>'Sangat baik','up'=>true],
+          ['icon'=>'bi-receipt-cutoff','cls'=>'green','val'=>number_format($stats['total_orders']),'lbl'=>'Total Pesanan','chg'=>$ordersChgLabel,'up'=>$ordersUp],
+          ['icon'=>'bi-clock','cls'=>'red','val'=>$stats['pending_orders'],'lbl'=>'Pesanan Menunggu','chg'=>$pendingChgLabel,'up'=>$pendingUp],
+          ['icon'=>'bi-cash-stack','cls'=>'amber','val'=>'Rp '.number_format($stats['total_revenue']/1000000,1).'Jt','lbl'=>'Total Pendapatan','chg'=>$revenueChgLabel,'up'=>$revenueUp],
+          ['icon'=>'bi-people','cls'=>'blue','val'=>$stats['total_customers'],'lbl'=>'Total Pelanggan','chg'=>$customersChgLabel,'up'=>$customersUp],
+          ['icon'=>'bi-cup-hot','cls'=>'purple','val'=>$stats['total_products'],'lbl'=>'Total Produk','chg'=>'Semua aktif','up'=>true],
         ];
         foreach ($statData as $s):
         ?>
@@ -339,6 +386,15 @@ document.addEventListener('click', function(e){
   if(!dropdown.contains(e.target)){
     dropdown.classList.remove('open');
   }
+});
+</script>
+
+<!-- Hamburger Toggle Script -->
+<script>
+document.getElementById('hamburgerBtn')?.addEventListener('click', function() {
+  document.querySelectorAll('.admin-sidebar').forEach(function(sidebar) {
+    sidebar.classList.toggle('closed');
+  });
 });
 </script>
 </body>
