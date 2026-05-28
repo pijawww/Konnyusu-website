@@ -168,14 +168,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
   .payment-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; }
   .payment-option { display:none; }
   .payment-label {
-    display:flex; flex-direction:column; align-items:center; gap:.4rem;
-    padding:.9rem .5rem; border:1.5px solid var(--border); border-radius:var(--radius-md);
+    display:flex; flex-direction:column; align-items:center; gap:.5rem;
+    padding:1rem .5rem; border:1.5px solid var(--border); border-radius:var(--radius-md);
     cursor:pointer; transition:all .2s; text-align:center;
-    background:var(--white);
+    background:var(--white); justify-content: center; min-height: 90px;
   }
-  .payment-label .pay-icon { font-size:1.5rem; }
-  .payment-label .pay-name { font-size:.72rem; font-weight:600; color:var(--text-mid); }
-  .payment-option:checked + .payment-label { border-color:var(--primary); background:rgba(26,60,46,.05); }
+  .payment-label .pay-icon { font-size:1.5rem; display: flex; align-items: center; justify-content: center; }
+  .payment-label img { height: 26px; object-fit: contain; }
+  .payment-label .pay-name { font-size:.72rem; font-weight:600; color:var(--text-mid); margin-top: 4px; }
+  .payment-option:checked + .payment-label { border-color:var(--primary); background:rgba(43,108,176,.05); }
   .payment-option:checked + .payment-label .pay-name { color:var(--primary); }
   /* Order summary */
   .summary-panel { background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); padding:1.5rem; position:sticky; top:90px; }
@@ -200,7 +201,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 <body class="page-wrapper">
 <?php include __DIR__ . '/../layouts/navbar.php'; ?>
 
-<!-- Breadcrumb -->
 <div style="background:var(--cream-dark);border-bottom:1px solid var(--border);padding:.6rem 0;">
   <div style="max-width:1060px;margin:0 auto;padding:0 1.25rem;font-size:.8rem;color:var(--text-muted);">
     <a href="../home/home.php" style="color:var(--primary);">Beranda</a>
@@ -214,9 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 <div class="page-content">
 <div class="checkout-layout">
 
-  <!-- LEFT: Form -->
   <div>
-    <!-- Steps -->
     <div class="steps mb-4 animate-fadeup">
       <div class="step">
         <div class="step-circle done"><i class="bi bi-check-lg"></i></div>
@@ -238,7 +236,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
       <input type="hidden" name="action" value="place_order">
       <input type="hidden" name="selected_items" value="<?= isset($_POST['selected_items']) ? htmlspecialchars($_POST['selected_items']) : '' ?>">
 
-      <!-- 1. Informasi Penerima -->
       <div class="section-card animate-fadeup">
         <div class="section-card__header">
           <div class="section-card__num">1</div>
@@ -280,7 +277,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         </div>
       </div>
 
-      <!-- 2. Metode Pengiriman -->
       <div class="section-card animate-fadeup" style="animation-delay:.08s">
         <div class="section-card__header">
           <div class="section-card__num">2</div>
@@ -289,26 +285,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         <div class="section-card__body">
           <?php
           $deliveries = [
-            ['priority','⚡','Prioritas (< 20 menit)','Rp 8.000','Pesanan diprioritaskan dan dikirim lebih cepat'],
-            ['standard','🛵','Standar (30 menit)','Rp 5.000','Estimasi pengantaran reguler sekitar 30 menit'],
-            ['pickup','🏪','Ambil Sendiri','Gratis','Ambil langsung di gerai terdekat'],
+            ['priority', 'bi-lightning-charge-fill', 'Prioritas (< 20 menit)', 'Rp 8.000', 'Pesanan diprioritaskan dan dikirim lebih cepat', '#f59e0b'],
+            ['standard', 'bi-bicycle', 'Standar (30 menit)', 'Rp 5.000', 'Estimasi pengantaran reguler sekitar 30 menit', 'var(--primary)'],
+            ['pickup', 'bi-shop', 'Ambil Sendiri', 'Gratis', 'Ambil langsung di gerai terdekat', 'var(--primary)'],
           ];
           foreach ($deliveries as $i => $d):
           ?>
-          <label style="display:flex;align-items:center;gap:1rem;padding:.85rem 1rem;border:1.5px solid var(--border);border-radius:var(--radius-md);cursor:pointer;margin-bottom:.65rem;transition:all .2s;" class="delivery-opt">
-            <input type="radio" name="delivery" value="<?= $d[0] ?>" <?= $d[0] === $defaultDeliveryMethod ? 'checked' : '' ?> style="accent-color:var(--primary);">
-            <span style="font-size:1.5rem;"><?= $d[1] ?></span>
+          <label style="display:flex;align-items:center;gap:1.25rem;padding:.85rem 1rem;border:1.5px solid var(--border);border-radius:var(--radius-md);cursor:pointer;margin-bottom:.65rem;transition:all .2s;" class="delivery-opt">
+            <input type="radio" name="delivery" value="<?= $d[0] ?>" <?= $d[0] === $defaultDeliveryMethod ? 'checked' : '' ?> style="accent-color:var(--primary); flex-shrink: 0;">
+            <i class="bi <?= $d[1] ?>" style="font-size:1.6rem; color: <?= $d[5] ?>; line-height: 1; flex-shrink: 0;"></i>
             <div style="flex:1;">
               <div style="font-weight:700;font-size:.9rem;color:var(--primary);"><?= $d[2] ?></div>
               <div style="font-size:.75rem;color:var(--text-muted);"><?= $d[4] ?></div>
             </div>
-            <span style="font-weight:700;font-size:.88rem;color:var(--primary);"><?= $d[3] ?></span>
+            <span style="font-weight:700;font-size:.88rem;color:var(--primary); flex-shrink:0;"><?= $d[3] ?></span>
           </label>
           <?php endforeach; ?>
         </div>
       </div>
 
-      <!-- 3. Metode Pembayaran -->
       <div class="section-card animate-fadeup" style="animation-delay:.15s">
         <div class="section-card__header">
           <div class="section-card__num">3</div>
@@ -318,12 +313,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
           <div class="payment-grid">
             <?php
             $payments = [
-              ['qris',  '📱', 'QRIS'],
-              ['gopay', '💚', 'GoPay'],
-              ['ovo',   '💜', 'OVO'],
-              ['dana',  '🔵', 'DANA'],
-              ['bca',   '🏦', 'BCA Transfer'],
-              ['cod',   '💵', 'Bayar di Tempat'],
+              ['qris',  'icon',  'bi-qr-code-scan',    'QRIS',            'var(--primary)'],
+              ['gopay', 'image', 'https://upload.wikimedia.org/wikipedia/commons/8/86/Gopay_logo.svg', 'GoPay', ''],
+              ['ovo',   'icon',  'bi-wallet2',         'OVO',             '#4c2a86'],
+              ['dana',  'image', 'https://dana.id/favicon.ico',  'DANA',  ''],
+              ['bca',   'icon',  'bi-bank',            'BCA Transfer',    '#00569c'],
+              ['cod',   'icon',  'bi-cash',            'Bayar di Tempat', '#16a34a'],
             ];
             foreach ($payments as $i => $p):
             ?>
@@ -331,8 +326,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
               <input type="radio" name="payment" value="<?= $p[0] ?>" id="pay_<?= $p[0] ?>"
                      class="payment-option" <?= $i===0?'checked':'' ?>>
               <label for="pay_<?= $p[0] ?>" class="payment-label">
-                <span class="pay-icon"><?= $p[1] ?></span>
-                <span class="pay-name"><?= $p[2] ?></span>
+                <span class="pay-icon">
+                  <?php if ($p[1] === 'icon'): ?>
+                    <i class="bi <?= $p[2] ?>" style="color: <?= $p[4] ?>;"></i>
+                  <?php else: ?>
+                    <img src="<?= $p[2] ?>" alt="<?= $p[3] ?>">
+                  <?php if ($p[0] === 'gopay') { echo '<style>.payment-label img[alt="GoPay"] { height:18px; }</style>'; } // Pemanis khusus gopay ?>
+                  <?php endif; ?>
+                </span>
+                <span class="pay-name"><?= $p[3] ?></span>
               </label>
             </div>
             <?php endforeach; ?>
@@ -343,12 +345,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     </form>
   </div>
 
-  <!-- RIGHT: Order Summary -->
   <div>
     <div class="summary-panel animate-fadeup" style="animation-delay:.1s">
       <h5>Ringkasan Pesanan</h5>
 
-      <!-- Items -->
       <div style="margin-bottom:1.25rem;">
         <?php foreach ($cartItems as $item):
             $productId = $item['menu_id'] ?? $item['id'];
@@ -418,7 +418,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>
 
-<!-- Order Success Modal -->
 <?php if ($orderSuccess && $orderId): ?>
 <div class="success-overlay" id="successOverlay">
   <div class="success-box">
@@ -484,7 +483,7 @@ function updateSummary() {
   
   // Get selected delivery method and its fee
   const selectedDelivery = document.querySelector('.delivery-opt input:checked');
-  const deliveryMethod = selectedDelivery ? selectedDelivery.value : 'same_day';
+  const deliveryMethod = selectedDelivery ? selectedDelivery.value : 'standard';
   let deliveryFee = deliveryFees[deliveryMethod];
   
   // Apply free delivery if subtotal >= 50000 and not pickup

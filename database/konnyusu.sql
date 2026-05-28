@@ -1,117 +1,335 @@
--- Database Konnyusu - E-Commerce Pemesanan Minuman
--- Created for Konnyusu Project
+-- phpMyAdmin SQL Dump
+-- version 5.2.2
+-- https://www.phpmyadmin.net/
+--
+-- Host: localhost:3306
+-- Generation Time: May 21, 2026 at 01:39 PM
+-- Server version: 8.0.30
+-- PHP Version: 8.1.10
 
-CREATE DATABASE IF NOT EXISTS konnyusu DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE konnyusu;
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
 
--- Table: USERS
-CREATE TABLE IF NOT EXISTS users (
-    user_id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    username VARCHAR(50) UNIQUE,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    phone VARCHAR(20),
-    address TEXT,
-    role ENUM('user', 'admin') DEFAULT 'user',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- Database: `konnyusu`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `cart`
+--
+
+CREATE TABLE `cart` (
+  `cart_id` int NOT NULL,
+  `user_id` int DEFAULT NULL,
+  `date` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `status` enum('active','checkout') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'active',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Table: MENU
-CREATE TABLE IF NOT EXISTS menu (
-    menu_id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    description TEXT,
-    price INT NOT NULL,
-    category VARCHAR(50) NOT NULL,
-    image VARCHAR(255),
-    stock INT DEFAULT 0,
-    is_new BOOLEAN DEFAULT FALSE,
-    is_best BOOLEAN DEFAULT FALSE,
-    sold INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+--
+-- Dumping data for table `cart`
+--
+
+INSERT INTO `cart` (`cart_id`, `user_id`, `date`, `status`, `created_at`) VALUES
+(1, 2, '2026-05-21 10:20:26', 'active', '2026-05-21 10:20:26'),
+(2, 1, '2026-05-21 10:30:59', 'active', '2026-05-21 10:30:59');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `cart_item`
+--
+
+CREATE TABLE `cart_item` (
+  `cart_item_id` int NOT NULL,
+  `cart_id` int NOT NULL,
+  `menu_id` int NOT NULL,
+  `quantity` int NOT NULL DEFAULT '1',
+  `price` int NOT NULL,
+  `subtotal` int NOT NULL,
+  `ice_level` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `sugar_level` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `size` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Table: CART
-CREATE TABLE IF NOT EXISTS cart (
-    cart_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('active', 'checkout') DEFAULT 'active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `menu`
+--
+
+CREATE TABLE `menu` (
+  `menu_id` int NOT NULL,
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `price` int NOT NULL,
+  `category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `stock` int DEFAULT '0',
+  `is_new` tinyint(1) DEFAULT '0',
+  `is_best` tinyint(1) DEFAULT '0',
+  `sold` int DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Table: CART_ITEM
-CREATE TABLE IF NOT EXISTS cart_item (
-    cart_item_id INT AUTO_INCREMENT PRIMARY KEY,
-    cart_id INT NOT NULL,
-    menu_id INT NOT NULL,
-    quantity INT NOT NULL DEFAULT 1,
-    price INT NOT NULL,
-    subtotal INT NOT NULL,
-    ice_level VARCHAR(50),
-    sugar_level VARCHAR(50),
-    size VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (cart_id) REFERENCES cart(cart_id) ON DELETE CASCADE,
-    FOREIGN KEY (menu_id) REFERENCES menu(menu_id) ON DELETE CASCADE
+--
+-- Dumping data for table `menu`
+--
+
+INSERT INTO `menu` (`menu_id`, `name`, `description`, `price`, `category`, `image`, `stock`, `is_new`, `is_best`, `sold`, `created_at`, `updated_at`) VALUES
+(1, 'Ice Aren Latte', 'Es kopi susu dengan gula aren dan kopi espresso premium', 11000, 'coffee', 'prod_6a0efb7f134ce.jpeg', 50, 0, 1, 0, '2026-05-21 12:33:03', '2026-05-21 12:37:10'),
+(2, 'Ice Shaken Caramel Latte', 'Es Kopi Susu dengan Gula Aren, Krimer dan Kopi Espresso Premium dan Topping Whippe Cream dan Saus Caramel Premium', 19000, 'coffee', 'prod_6a0efbc5c3c3c.jpeg', 50, 0, 1, 0, '2026-05-21 12:34:13', '2026-05-21 12:34:22'),
+(3, 'Ice Cappucinno', 'Es Kopi Susu dengan Kopi Espresso Premium', 13000, 'coffee', 'prod_6a0efc0ebdfd9.jpeg', 30, 0, 0, 0, '2026-05-21 12:35:26', '2026-05-21 12:35:26'),
+(4, 'Ice Butter Aren Latte', 'Es kopi susu dengan gula aren dan topping biscuit crumble dan kopi espresso premium', 19000, 'coffee', 'prod_6a0efc5c2df8f.jpeg', 20, 1, 0, 0, '2026-05-21 12:36:44', '2026-05-21 12:36:44'),
+(5, 'Nyusu Oreo', 'Susu dengan campuran dna topping oreo memiliki rasa yang pas', 12000, 'non-coffee', 'prod_6a0efce2694de.jpeg', 100, 0, 1, 0, '2026-05-21 12:38:58', '2026-05-21 12:38:58'),
+(6, 'Nyusu Regal', 'Susu sapi segar dengan campuran Mari Regal yang khas', 12000, 'non-coffee', 'prod_6a0efd355fc96.jpeg', 18, 0, 0, 0, '2026-05-21 12:40:21', '2026-05-21 12:40:21'),
+(7, 'Nyusu Pisang', 'Susu sapi segar dengan campuran buah pisang yang segar', 12000, 'non-coffee', 'prod_6a0efd75392aa.jpeg', 25, 0, 0, 0, '2026-05-21 12:41:25', '2026-05-21 12:41:25'),
+(8, 'Nyusu Kurma', 'Susu sapi dengan campuran buah kurma yang manis', 12000, 'non-coffee', 'prod_6a0efdbb720bb.jpeg', 30, 0, 0, 0, '2026-05-21 12:42:35', '2026-05-21 12:42:35'),
+(9, 'Nyusu Matcha', 'Susu sapi dengan matcha pilihan', 12000, 'non-coffee', 'prod_6a0efe0c72bd1.jpeg', 28, 0, 1, 0, '2026-05-21 12:43:56', '2026-05-21 12:43:56'),
+(10, 'Siomay Goreng', 'Siomay goreng yang enak untuk camilan', 15000, 'makanan', 'prod_6a0f095fc6f31.jpg', 18, 1, 0, 0, '2026-05-21 13:32:15', '2026-05-21 13:32:15');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `orders`
+--
+
+CREATE TABLE `orders` (
+  `order_id` int NOT NULL,
+  `user_id` int DEFAULT NULL,
+  `repeat_order_id` int DEFAULT NULL,
+  `order_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
+  `cancellation_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `viewed_by_admin` tinyint(1) DEFAULT '0',
+  `viewed_by_user` tinyint(1) DEFAULT '0',
+  `order_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `order_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'dine_in',
+  `total` int NOT NULL,
+  `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `recipient_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `recipient_phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `recipient_address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `recipient_city` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `recipient_postal` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `delivery_fee` int DEFAULT '0',
+  `tax` int DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Table: ORDERS
-CREATE TABLE IF NOT EXISTS orders (
-    order_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    repeat_order_id INT,
-    order_status VARCHAR(50) DEFAULT 'pending',
-    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    order_type VARCHAR(50) DEFAULT 'dine_in',
-    total INT NOT NULL,
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `order_item`
+--
+
+CREATE TABLE `order_item` (
+  `order_item_id` int NOT NULL,
+  `order_id` int NOT NULL,
+  `menu_id` int NOT NULL,
+  `quantity` int NOT NULL,
+  `price` int NOT NULL,
+  `ice_level` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `sugar_level` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `size` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Table: ORDER_ITEM
-CREATE TABLE IF NOT EXISTS order_item (
-    order_item_id INT AUTO_INCREMENT PRIMARY KEY,
-    order_id INT NOT NULL,
-    menu_id INT NOT NULL,
-    quantity INT NOT NULL,
-    price INT NOT NULL,
-    ice_level VARCHAR(50),
-    sugar_level VARCHAR(50),
-    size VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE,
-    FOREIGN KEY (menu_id) REFERENCES menu(menu_id) ON DELETE CASCADE
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `payment`
+--
+
+CREATE TABLE `payment` (
+  `payment_id` int NOT NULL,
+  `order_id` int NOT NULL,
+  `payment_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
+  `payment_date` timestamp NULL DEFAULT NULL,
+  `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `amount` int NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Table: PAYMENT
-CREATE TABLE IF NOT EXISTS payment (
-    payment_id INT AUTO_INCREMENT PRIMARY KEY,
-    order_id INT NOT NULL,
-    payment_status VARCHAR(50) DEFAULT 'pending',
-    payment_date TIMESTAMP NULL,
-    payment_method VARCHAR(50),
-    amount INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `users`
+--
+
+CREATE TABLE `users` (
+  `user_id` int NOT NULL,
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `role` enum('user','admin') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'user',
+  `notifications_enabled` tinyint(1) DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `birthdate` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `gender` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `bio` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Insert Admin User
-INSERT INTO users (name, username, email, password, role) VALUES 
-('Admin Konnyusu', 'admin', 'admin@konnyusu.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin');
+--
+-- Dumping data for table `users`
+--
 
--- Insert Demo Products
-INSERT INTO menu (name, description, price, category, image, stock, is_new, is_best, sold) VALUES
-('Caramel Tart Latte', 'Espresso lembut dengan sirup karamel asli dan foam susu tebal. Manis di lidah, hangat di hati.', 32000, 'coffee', 'caramel-tart.jpeg', 100, FALSE, TRUE, 238),
-('Sea Salt Cream Latte', 'Perpaduan espresso segar dengan krim garam laut yang menggoda. Sensasi gurih-manis yang unik.', 28000, 'coffee', 'oat-latte.jpg', 100, FALSE, TRUE, 195),
-('Signetone Oat Latte', 'Single origin arabika dengan susu oat organik. Pilihan sehat tanpa kompromi rasa.', 30000, 'coffee', 'oat-latte.jpg', 100, TRUE, FALSE, 140),
-('Signature Series', 'Racikan eksklusif barista terbaik kami. Blend sempurna dari tiga varietas biji kopi premium.', 45000, 'coffee', 'signature.jpg', 50, FALSE, TRUE, 89),
-('Matcha Oat Latte', 'Matcha ceremonial grade dari Jepang dengan susu oat hangat. Sehat, segar, dan menenangkan.', 28000, 'non-coffee', 'oat-latte.jpg', 100, FALSE, TRUE, 312),
-('Hojicha Milk', 'Teh hojicha panggang asal Kyoto dengan susu full cream. Aroma sangit yang khas dan memikat.', 25000, 'tea', 'savory.jpg', 100, TRUE, FALSE, 167);
+INSERT INTO `users` (`user_id`, `name`, `username`, `email`, `password`, `phone`, `address`, `role`, `notifications_enabled`, `created_at`, `updated_at`, `birthdate`, `gender`, `bio`) VALUES
+(1, 'Admin Konnyusu', 'admin', 'admin@konnyusu.com', '$2y$10$d4FUx8IRAXQqg1SVPrgMHu1qtTAJfaebL5isW8Xm3qkNJ1F8zEnxa', NULL, NULL, 'admin', 1, '2026-05-18 14:27:54', '2026-05-18 14:27:54', NULL, NULL, NULL),
+(2, 'Zuhrufatin Nisya', NULL, 'zuhruffatin@gmail.com', '$2y$10$mmw4PTVkn/TQuzubqsG57.AC86fx4PR.5SAlAbgdSdfb7pKdAtWBS', '89603593717', NULL, 'user', 1, '2026-05-18 16:07:47', '2026-05-21 08:21:37', '', 'female', '');
 
--- Note: Password admin is 'admin123' (hashed)
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `cart`
+--
+ALTER TABLE `cart`
+  ADD PRIMARY KEY (`cart_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `cart_item`
+--
+ALTER TABLE `cart_item`
+  ADD PRIMARY KEY (`cart_item_id`),
+  ADD KEY `cart_id` (`cart_id`),
+  ADD KEY `menu_id` (`menu_id`);
+
+--
+-- Indexes for table `menu`
+--
+ALTER TABLE `menu`
+  ADD PRIMARY KEY (`menu_id`);
+
+--
+-- Indexes for table `orders`
+--
+ALTER TABLE `orders`
+  ADD PRIMARY KEY (`order_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `order_item`
+--
+ALTER TABLE `order_item`
+  ADD PRIMARY KEY (`order_item_id`),
+  ADD KEY `order_id` (`order_id`),
+  ADD KEY `menu_id` (`menu_id`);
+
+--
+-- Indexes for table `payment`
+--
+ALTER TABLE `payment`
+  ADD PRIMARY KEY (`payment_id`),
+  ADD KEY `order_id` (`order_id`);
+
+--
+-- Indexes for table `users`
+--
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`user_id`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD UNIQUE KEY `username` (`username`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `cart`
+--
+ALTER TABLE `cart`
+  MODIFY `cart_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `cart_item`
+--
+ALTER TABLE `cart_item`
+  MODIFY `cart_item_id` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `menu`
+--
+ALTER TABLE `menu`
+  MODIFY `menu_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+
+--
+-- AUTO_INCREMENT for table `orders`
+--
+ALTER TABLE `orders`
+  MODIFY `order_id` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `order_item`
+--
+ALTER TABLE `order_item`
+  MODIFY `order_item_id` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `payment`
+--
+ALTER TABLE `payment`
+  MODIFY `payment_id` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `users`
+--
+ALTER TABLE `users`
+  MODIFY `user_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `cart`
+--
+ALTER TABLE `cart`
+  ADD CONSTRAINT `cart_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `cart_item`
+--
+ALTER TABLE `cart_item`
+  ADD CONSTRAINT `cart_item_ibfk_1` FOREIGN KEY (`cart_id`) REFERENCES `cart` (`cart_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `cart_item_ibfk_2` FOREIGN KEY (`menu_id`) REFERENCES `menu` (`menu_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `orders`
+--
+ALTER TABLE `orders`
+  ADD CONSTRAINT `orders_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `order_item`
+--
+ALTER TABLE `order_item`
+  ADD CONSTRAINT `order_item_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `order_item_ibfk_2` FOREIGN KEY (`menu_id`) REFERENCES `menu` (`menu_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `payment`
+--
+ALTER TABLE `payment`
+  ADD CONSTRAINT `payment_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`) ON DELETE CASCADE;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

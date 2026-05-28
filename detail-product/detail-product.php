@@ -32,14 +32,14 @@ $related = array_slice($related, 0, 4);
   <style>
   .detail-wrap { max-width:1100px; margin:0 auto; padding:2.5rem 1.25rem; }
   /* Product hero */
-  .product-hero { display:grid; grid-template-columns:1fr 1fr; gap:3rem; margin-bottom:3.5rem; }
-  .product-img-wrap { position:relative; }
-  .product-main-img { width:100%; height:420px; object-fit:cover; border-radius:var(--radius-lg); }
+  .product-hero { display:flex; gap:3rem; margin-bottom:3.5rem; align-items: flex-start;}
+  .product-img-wrap { width: 45%; flex-shrink: 0;}
+  .product-main-img { width:100%; height:380px; object-fit:cover; border-radius:var(--radius-lg);box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
   .img-thumbnail-row { display:flex; gap:.65rem; margin-top:.75rem; }
   .img-thumb { width:72px; height:72px; object-fit:cover; border-radius:var(--radius-md); border:2px solid transparent; cursor:pointer; transition:border-color .2s; }
   .img-thumb.active { border-color:var(--primary); }
   /* Info */
-  .product-info {}
+  .product-info {flex: 1; }
   .product-cat { font-size:.72rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); margin-bottom:.5rem; }
   .product-name { font-family:var(--font-display); font-size:2rem; font-weight:800; color:var(--primary); line-height:1.15; margin-bottom:.65rem; }
   .rating-count { font-size:.82rem; color:var(--text-muted); }
@@ -83,8 +83,13 @@ $related = array_slice($related, 0, 4);
   .review-text { font-size:.87rem; color:var(--text-mid); line-height:1.65; }
   /* Related */
   .related-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; }
-  @media(max-width:900px){ .product-hero{grid-template-columns:1fr;} .related-grid{grid-template-columns:repeat(2,1fr);} .product-features{grid-template-columns:1fr 1fr;} }
   @media(max-width:576px){ .cta-row{flex-direction:column;} .info-tabs{overflow-x:auto;} }
+  @media(max-width:900px){ 
+    .product-hero{ flex-direction: column; gap: 2rem; } 
+    .product-img-wrap{ width: 100%; }
+    .related-grid{ grid-template-columns: repeat(2,1fr); } 
+    .product-features{ grid-template-columns: 1fr 1fr; } 
+  }
   </style>
 </head>
 <body class="page-wrapper">

@@ -113,6 +113,23 @@ function timeAgo(string $datetime): string {
   .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(185px,1fr)); gap:1.1rem; margin-bottom:2rem; }
   .stat-card { background:var(--white); border-radius:var(--radius-lg); border:1px solid var(--border); padding:1.25rem; display:flex; align-items:flex-start; gap:.9rem; transition:transform .2s,box-shadow .2s; }
   .stat-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-md); }
+  .stat-card {
+    position:relative;
+    overflow:hidden;
+  }
+
+  .stat-card::before{
+    content:'';
+    position:absolute;
+    inset:0;
+    background:linear-gradient(135deg,rgba(255,255,255,.08),transparent);
+    opacity:0;
+    transition:.3s;
+  }
+
+  .stat-card:hover::before{
+    opacity:1;
+  }
   .stat-card__icon { width:44px; height:44px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; font-size:1.25rem; flex-shrink:0; }
   .stat-card__icon--green  { background:#ecfaf4; color:var(--success); }
   .stat-card__icon--amber  { background:#fff8ec; color:var(--accent); }
@@ -129,7 +146,12 @@ function timeAgo(string $datetime): string {
   .chart-box h6 { font-size:.95rem; font-weight:700; color:var(--primary); margin-bottom:1.25rem; }
   .chart-bars { display:flex; align-items:flex-end; gap:.5rem; height:140px; }
   .chart-bar-wrap { display:flex; flex-direction:column; align-items:center; gap:.3rem; flex:1; }
-  .chart-bar { width:100%; border-radius:var(--radius-sm) var(--radius-sm) 0 0; background:linear-gradient(180deg,var(--primary-light),var(--primary)); transition:opacity .2s; cursor:pointer; }
+  .chart-bar {
+    width:100%;
+    border-radius:10px 10px 0 0;
+    background:linear-gradient(180deg,#7c8cff,var(--primary));
+    box-shadow:0 6px 18px rgba(67,97,238,.18);
+  }
   .chart-bar:hover { opacity:.75; }
   .chart-bar.accent { background:linear-gradient(180deg,var(--accent-light),var(--accent)); }
   .chart-bar-label { font-size:.68rem; color:var(--text-muted); }
@@ -149,6 +171,11 @@ function timeAgo(string $datetime): string {
   .notification-item__desc { font-size:.75rem; color:var(--text-muted); margin-top:.2rem; }
   .notification-item__time { font-size:.7rem; color:var(--text-muted); margin-top:.3rem; }
   .notification-empty { padding:1.5rem; text-align:center; color:var(--text-muted); font-size:.85rem; }
+  .admin-topbar input:focus{
+    border-color:var(--primary);
+    background:#fff;
+    box-shadow:0 0 0 4px rgba(67,97,238,.08);
+  }
   @media(max-width:900px){ .admin-sidebar{display:none;} .admin-body{padding:1.25rem;} }
   </style>
 </head>
@@ -210,7 +237,9 @@ function timeAgo(string $datetime): string {
             </div>
             <?php if(empty($unviewedOrders)):?>
             <div class="notification-empty">
-              <i class="bi bi-check-circle" style="font-size:1.5rem;margin-bottom:.5rem;display:block;color:var(--success);"></i>
+              <div style="width:52px;height:52px;border-radius:50%;background:#ecfaf4;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem;">
+                <i class="bi bi-bell-slash" style="font-size:1.2rem;color:var(--success);"></i>
+              </div>
               Tidak ada notifikasi baru
             </div>
             <?php else:?>
@@ -224,14 +253,16 @@ function timeAgo(string $datetime): string {
             <?php endif;?>
           </div>
         </div>
-        <div style="width:34px;height:34px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;">A</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#5b6cff);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;box-shadow:0 4px 12px rgba(0,0,0,.12);">
+          <i class="bi bi-person-fill"></i>
+        </div>
       </div>
     </div>
 
     <div class="admin-body">
       <div class="d-flex justify-content-start align-items-center mb-4">
         <div>
-          <h4 style="font-size:1.4rem;font-weight:700;color:var(--primary);margin-bottom:.2rem;">Selamat Datang, Admin 👋</h4>
+          <h4 style="font-size:1.4rem;font-weight:700;color:var(--primary);margin-bottom:.2rem;">Selamat Datang, Admin </h4>
           <p style="font-size:.85rem;color:var(--text-muted);margin:0;"><?= date('l, d F Y') ?></p>
         </div>
       </div>
@@ -317,7 +348,10 @@ function timeAgo(string $datetime): string {
               </div>
               <div style="text-align:right;flex-shrink:0;">
                 <div style="font-size:.78rem;font-weight:700;color:var(--primary);"><?= $p['total_sold'] ?></div>
-                <div style="font-size:.68rem;color:var(--text-muted);">⭐ 4.8</div>
+                <div style="display:flex;align-items:center;gap:.3rem;font-size:.7rem;color:var(--text-muted);">
+                  <i class="bi bi-bag-check-fill" style="color:var(--primary);font-size:.72rem;"></i>
+                  <span>Terjual</span>
+                </div>
               </div>
             </div>
             <?php endforeach; ?>

@@ -367,35 +367,6 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     box-shadow: 0 4px 14px rgba(26,60,46,.25);
   }
 
-  /* ---- Promo Banner ---- */
-  .promo-banner {
-    background: linear-gradient(120deg, var(--accent) 0%, #f0cb7a 100%);
-    border-radius: var(--radius-lg);
-    padding: 2.5rem 2rem;
-    position: relative;
-    overflow: visible;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1.5rem;
-  }
-  .promo-banner::after {
-    content: '☕';
-    position: absolute;
-    right: 2rem; top: 50%;
-    transform: translateY(-50%);
-    font-size: 6rem;
-    opacity: .15;
-  }
-  .promo-banner h3 {
-    font-family: var(--font-display);
-    font-size: 1.6rem;
-    font-weight: 800;
-    color: var(--primary);
-    margin-bottom: .4rem;
-  }
-  .promo-banner p { color: var(--primary); opacity: .75; font-size: .9rem; }
-
   /* ---- Why Section ---- */
   .why-card {
     background: var(--white);
@@ -424,8 +395,120 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
   .why-card p { font-size: .85rem; color: var(--text-muted); line-height: 1.55; margin: 0; }
 
   /* ---- Section spacing ---- */
-  .section { padding: 60px 0; }
-  .section--gray { background: var(--cream-dark); }
+.section {
+  padding: 60px 0;
+  position: relative;
+}
+
+.section--gray {
+  background: var(--cream-dark);
+}
+
+/* ---- MENU SECTION BG ---- */
+#menu {
+  background:
+    linear-gradient(135deg, #fffdf8 0%, #f8f4ec 50%, #f3eee3 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Blur kanan atas */
+#menu::before {
+  content: '';
+  position: absolute;
+  top: -120px;
+  right: -120px;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  background: rgba(212,168,83,.18);
+  filter: blur(80px);
+}
+
+/* Blur kiri bawah */
+#menu::after {
+  content: '';
+  position: absolute;
+  bottom: -120px;
+  left: -120px;
+  width: 350px;
+  height: 350px;
+  border-radius: 50%;
+  background: rgba(26,60,46,.10);
+  filter: blur(80px);
+}
+
+/* supaya isi section tetap di atas dekorasi */
+#menu .container {
+  position: relative;
+  z-index: 2;
+}
+/* ---- MENU BG PREMIUM ---- */
+#menu {
+  background:
+    linear-gradient(135deg, #fffdf8 0%, #f8f4ec 50%, #f3eee3 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Glow 1 */
+#menu::before {
+  content: '';
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  background: rgba(212,168,83,.18);
+  border-radius: 50%;
+  top: -120px;
+  right: -120px;
+  filter: blur(80px);
+  animation: floatBg 8s ease-in-out infinite;
+}
+
+/* Glow 2 */
+#menu::after {
+  content: '';
+  position: absolute;
+  width: 350px;
+  height: 350px;
+  background: rgba(26,60,46,.10);
+  border-radius: 50%;
+  bottom: -120px;
+  left: -120px;
+  filter: blur(80px);
+  animation: floatBg2 10s ease-in-out infinite;
+}
+
+/* Isi tetap di atas */
+#menu .container {
+  position: relative;
+  z-index: 2;
+}
+
+/* Animation */
+@keyframes floatBg {
+  0% {
+    transform: translate(0,0);
+  }
+  50% {
+    transform: translate(-20px, 20px);
+  }
+  100% {
+    transform: translate(0,0);
+  }
+}
+
+@keyframes floatBg2 {
+  0% {
+    transform: translate(0,0);
+  }
+  50% {
+    transform: translate(20px,-20px);
+  }
+  100% {
+    transform: translate(0,0);
+  }
+}
 
   /* ---- Empty state ---- */
   .empty-state {
@@ -449,8 +532,6 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
   @media (max-width: 768px) {
     .hero { min-height: auto; padding: 3rem 0; }
     .hero__image-wrap { display: none; }
-    .promo-banner { flex-direction: column; text-align: center; }
-    .promo-banner::after { display: none; }
   }
   </style>
 </head>
@@ -506,23 +587,6 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
     </div>
   </div>
 </section>
-
-<!-- ============================================================ -->
-<!--  PROMO BANNER                                                 -->
-<!-- ============================================================ -->
-<div class="container my-5">
-  <div class="promo-banner scroll-reveal">
-    <div>
-      <h3>Gratis Ongkir untuk Pesanan Pertama! 🎉</h3>
-      <p>Daftar sekarang dan nikmati pengiriman gratis tanpa minimum pembelian.</p>
-    </div>
-    <a href="../auth/register.php"
-       class="btn-brand flex-shrink-0"
-       style="padding:.8rem 1.8rem;font-size:.9rem;white-space:nowrap;">
-      Klaim Sekarang
-    </a>
-  </div>
-</div>
 
 <!-- ============================================================ -->
 <!--  MENU SECTION                                                 -->
@@ -681,10 +745,9 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content" style="border-radius:20px;overflow:hidden;border:none;">
       <div class="modal-body p-0">
-        <div class="row g-0">
-          <div class="col-md-5">
-            <div id="modalImage" style="height:100%;min-height:320px;background:var(--cream);display:flex;align-items:center;justify-content:center;">
-              <img id="modalImg" src="" alt="" style="width:100%;height:100%;object-fit:cover;">
+        <div class="row g-0 align-items-center"> <div class="col-md-5">
+            <div id="modalImage" style="height: 380px; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+              <img id="modalImg" src="" alt="" style="width: 100%; height: 100%; object-fit: cover;">
             </div>
           </div>
           <div class="col-md-7 p-4">

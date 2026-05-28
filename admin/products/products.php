@@ -207,19 +207,19 @@ $stats = [
     <!-- Stats -->
     <div class="stat-grid">
       <div class="stat-card">
-        <div class="stat-card__icon stat-card__icon--green"><i class="bi bi-cart3"></i></div>
+        <div class="stat-card__icon stat-card__icon--green"><i class="bi bi-box-seam-fill"></i></div>
         <div><div class="stat-card__val"><?=number_format($stats['total'])?></div><div class="stat-card__label">Total Produk</div></div>
       </div>
       <div class="stat-card">
-        <div class="stat-card__icon stat-card__icon--amber"><i class="bi bi-award"></i></div>
+        <div class="stat-card__icon stat-card__icon--amber"><i class="bi bi-graph-up-arrow"></i></div>
         <div><div class="stat-card__val"><?=$stats['best']?></div><div class="stat-card__label">Best Seller</div></div>
       </div>
       <div class="stat-card">
-        <div class="stat-card__icon stat-card__icon--blue"><i class="bi bi-rocket-takeoff"></i></div>
+        <div class="stat-card__icon stat-card__icon--blue"><i class="bi bi-bag-plus-fill"></i></div>
         <div><div class="stat-card__val"><?=$stats['new']?></div><div class="stat-card__label">Produk Baru</div></div>
       </div>
       <div class="stat-card">
-        <div class="stat-card__icon stat-card__icon--purple"><i class="bi bi-basket2"></i></div>
+        <div class="stat-card__icon stat-card__icon--purple"><i class="bi bi-cart-check-fill"></i></div>
         <div><div class="stat-card__val"><?=number_format($stats['total_sold'])?></div><div class="stat-card__label">Total Terjual</div></div>
       </div>
     </div>
