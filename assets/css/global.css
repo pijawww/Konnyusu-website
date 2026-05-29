@@ -174,6 +174,7 @@ img { max-width: 100%; display: block; }
 .k-badge-green    { background: #ecfaf4; color: var(--success); border: 1px solid #a3e0c8; }
 .k-badge-red      { background: #fdf0f0; color: var(--danger);  border: 1px solid #f5b8b8; }
 .k-badge-gray     { background: #f4f4f4; color: var(--text-muted); border: 1px solid var(--border); }
+.k-badge-blue     { background: #eff6ff; color: #3b82f6; border: 1px solid #93c5fd; }
 
 /* ---- Divider ---- */
 .k-divider {

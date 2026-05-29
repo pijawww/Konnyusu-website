@@ -27,22 +27,25 @@ $stats = [
 ];
 
 $statusColor = [
+    'Menunggu'   => 'k-badge-gray',
     'Selesai'    => 'k-badge-green',
     'Diproses'   => 'k-badge-accent',
-    'Dikirim'    => 'k-badge-gray',
+    'Dikirim'    => 'k-badge-blue',
     'Dibatalkan' => 'k-badge-red',
-    'pending'    => 'k-badge-accent',
+    'pending'    => 'k-badge-gray',
     'processing' => 'k-badge-accent',
+    'shipped'    => 'k-badge-blue',
     'completed'  => 'k-badge-green',
     'cancelled'  => 'k-badge-red',
 ];
 
 function getStatusLabel(string $status): string {
     $labels = [
-        'pending' => 'Menunggu',
+        'pending'    => 'Menunggu',
         'processing' => 'Diproses',
-        'completed' => 'Selesai',
-        'cancelled' => 'Dibatalkan'
+        'shipped'    => 'Dikirim',
+        'completed'  => 'Selesai',
+        'cancelled'  => 'Dibatalkan'
     ];
     return $labels[$status] ?? $status;
 }

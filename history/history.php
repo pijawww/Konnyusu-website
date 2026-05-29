@@ -2,26 +2,27 @@
 // history/history.php
 session_start();
 require_once __DIR__ . '/../config/auth.php';
+require_once __DIR__ . '/../config/cart.php';
 require_once __DIR__ . '/../config/order.php';
 include __DIR__ . '/../data/products.php';
 
 // Require login
 requireLogin();
 
-$cartTotalItems = 0;
-if (isset($_SESSION['cart'])) {
-    foreach ($_SESSION['cart'] as $item) $cartTotalItems += $item['quantity'];
-}
+$cartTotalItems = getCartCount();
 
 $currentUser = getCurrentUser();
 $ordersData = getUserOrders($currentUser['user_id']);
 
-// Mark only active order notifications as viewed (processing/shipped only, NOT completed/cancelled)
-foreach ($ordersData as $ord) {
-    if (in_array($ord['order_status'], ['processing', 'shipped'])) {
-        markOrderAsViewedByUser($ord['order_id'], $currentUser['user_id']);
-    }
+// Handle highlight parameter for notification clicks
+$highlightOrderId = isset($_GET['highlight']) ? (int)$_GET['highlight'] : null;
+$showHighlightBanner = false;
+if ($highlightOrderId) {
+    $showHighlightBanner = true;
 }
+
+// DO NOT mark as viewed here - let user see notifications first!
+// Notifications will be marked as read when user opens the notification dropdown in navbar
 
 // Process orders for display
 $orders = [];
@@ -166,6 +167,16 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
     .print-only-detail { display:block; text-align:center; margin-bottom:1.5rem; padding-bottom:1rem; border-bottom:1px dashed var(--border); }
   }
   @media(max-width:576px){ .hist-stats{grid-template-columns:1fr 1fr;} .hist-stat:last-child{grid-column:1/-1;} }
+  /* Highlight animation for notification click */
+  .order-card.highlight { animation: highlightPulse 2s ease-out; border: 2px solid var(--primary); }
+  @keyframes highlightPulse {
+    0% { box-shadow: 0 0 0 0 rgba(46,107,79,0.4); }
+    50% { box-shadow: 0 0 0 15px rgba(46,107,79,0); }
+    100% { box-shadow: 0 0 0 0 rgba(46,107,79,0); }
+  }
+  .highlight-banner { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; padding: .85rem 1.25rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; display: flex; align-items: center; gap: .75rem; animation: fadeUp .4s ease; }
+  .highlight-banner i { font-size: 1.3rem; }
+  .highlight-banner span { font-size: .88rem; }
   </style>
 </head>
 <body class="page-wrapper">
@@ -187,6 +198,13 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
     <h1><i class="bi bi-clock-history me-2" style="font-size:1.5rem;"></i>Riwayat Pesanan</h1>
     <p>Lihat semua transaksi dan status pesanan Anda</p>
   </div>
+
+  <?php if ($showHighlightBanner): ?>
+  <div class="highlight-banner">
+    <i class="bi bi-bell-fill"></i>
+    <span>Ada notifikasi baru! Scroll ke bawah untuk melihat pesanan yang diperbarui.</span>
+  </div>
+  <?php endif; ?>
 
   <!-- Summary Stats -->
   <div class="hist-stats animate-fadeup" style="animation-delay:.05s">
@@ -226,9 +244,10 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
   </div>
   <?php else: ?>
     <?php foreach ($orders as $i => $order): ?>
-    <div class="order-card animate-fadeup order-item-wrap"
+    <div class="order-card animate-fadeup order-item-wrap <?= ($highlightOrderId && $order['order_id'] == $highlightOrderId) ? 'highlight' : '' ?>"
          data-status="<?= $order['status'] ?>"
-         style="animation-delay:<?= ($i * 80) ?>ms">
+         style="animation-delay:<?= ($i * 80) ?>ms"
+         id="order-<?= $order['order_id'] ?>">
 
       <div class="order-card__header">
         <div>
@@ -465,6 +484,18 @@ function closeDetailModal() {
 document.getElementById('orderDetailModal').addEventListener('click', function(e) {
   if (e.target === this) closeDetailModal();
 });
+
+// Scroll to highlighted order from notification click
+<?php if ($highlightOrderId): ?>
+document.addEventListener('DOMContentLoaded', function() {
+  const highlightedOrder = document.getElementById('order-<?= $highlightOrderId ?>');
+  if (highlightedOrder) {
+    setTimeout(function() {
+      highlightedOrder.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 500);
+  }
+});
+<?php endif; ?>
 </script>
 </body>
 </html>

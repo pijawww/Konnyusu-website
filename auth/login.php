@@ -209,7 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="form-group">
           <div class="d-flex justify-content-between align-items-center mb-1">
             <label class="form-label mb-0">Kata Sandi</label>
-            <a href="#" style="font-size:.78rem;color:var(--primary);font-weight:600;">Lupa Sandi?</a>
+            <a href="forgot-password.php" style="font-size:.78rem;color:var(--primary);font-weight:600;">Lupa Sandi?</a>
           </div>
           <div class="input-wrap">
             <input type="password" name="password" id="pwdInput" class="form-input"

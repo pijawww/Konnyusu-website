@@ -74,10 +74,7 @@ $deliveryFee = ($subtotal >= 50000) ? 0 : $baseDeliveryFee;
 
 $tax         = (int)round($subtotal * 0.01);
 $total       = $subtotal + $deliveryFee + $tax;
-$cartTotalItems = 0;
-foreach ($cartItems as $item) {
-    $cartTotalItems += $item['quantity'];
-}
+$cartTotalItems = getCartCount();
 
 $currentUser = getCurrentUser();
 $orderSuccess = false;

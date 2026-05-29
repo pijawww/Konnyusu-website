@@ -3,12 +3,10 @@
 session_start();
 include __DIR__ . '/../data/products.php';
 require_once __DIR__ . '/../config/auth.php';
+require_once __DIR__ . '/../config/cart.php';
 require_once __DIR__ . '/../config/order.php';
 
-$cartTotalItems = 0;
-if (isset($_SESSION['cart'])) {
-    foreach ($_SESSION['cart'] as $item) $cartTotalItems += $item['quantity'];
-}
+$cartTotalItems = getCartCount();
 
 $currentUser = getCurrentUser();
 if (!$currentUser) {

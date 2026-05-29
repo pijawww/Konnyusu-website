@@ -76,7 +76,7 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
       <?php if ($currentUser && $currentUser['role'] !== 'admin'): ?>
         <div class="dropdown" id="notifDropdownWrapper">
           <button class="kny-navbar__bell" id="notifBellBtn" title="Notifikasi" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-bell" style="color: var(--primary);"></i>
+            <i class="bi bi-bell<?= $userNotifCount > 0 ? '-fill' : '' ?>" style="color: var(--primary);"></i>
             <?php if ($userNotifCount > 0): ?>
               <span id="notifBadge" style="position:absolute;top:-4px;right:-6px;min-width:18px;height:18px;background:var(--danger);color:#fff;border-radius:50%;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;border:2px solid rgba(26,60,46,0.5);"><?= $userNotifCount ?></span>
             <?php endif; ?>
@@ -86,7 +86,7 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
               <div class="d-flex justify-content-between align-items-center">
                 <span style="font-weight:700;color:var(--primary);font-size:.85rem;">Notifikasi</span>
                 <?php if ($userNotifCount > 0): ?>
-                <span style="font-size:.72rem;color:var(--text-muted);"><?= $userNotifCount ?> baru</span>
+                <span style="font-size:.72rem;background:var(--accent);color:var(--primary);padding:2px 8px;border-radius:20px;font-weight:700;"><?= $userNotifCount ?> baru</span>
                 <?php endif; ?>
               </div>
             </li>
@@ -98,9 +98,11 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
             <?php else: ?>
               <?php foreach ($userNotifications as $notif): ?>
               <li>
-                <a class="dropdown-item kny-notif-item <?= $notif['is_read'] ? '' : 'unread' ?>" href="../history/history.php">
-                  <div class="d-flex align-items-start gap-2">
-                    <div class="kny-notif-icon">
+                <a class="dropdown-item kny-notif-item <?= !$notif['is_read'] ? 'unread' : '' ?>"
+                   href="../history/history.php?highlight=<?= $notif['order_id'] ?>"
+                   onclick="showNotifOrderDetail(<?= $notif['order_id'] ?>); return false;">
+                  <div class="kny-notif-row">
+                    <div class="kny-notif-icon <?= $notif['icon_class'] ?? '' ?>">
                       <?php
                       $notifIcons = [
                         'pending' => 'bi-clock-fill',
@@ -112,10 +114,17 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
                       ?>
                       <i class="bi <?= $notifIcons[$notif['order_status']] ?? 'bi-bell' ?>"></i>
                     </div>
-                    <div class="kny-notif-content">
+                    <div class="kny-notif-body">
                       <div class="kny-notif-title"><?= htmlspecialchars($notif['title']) ?></div>
                       <div class="kny-notif-message"><?= htmlspecialchars($notif['message']) ?></div>
-                      <div class="kny-notif-time"><?= date('d M Y, H:i', strtotime($notif['created_at'])) ?></div>
+                      <?php if (!empty($notif['action_text'])): ?>
+                      <div class="kny-notif-badge">
+                        <i class="bi bi-hand-index-thumb"></i> <?= htmlspecialchars($notif['action_text']) ?>
+                      </div>
+                      <?php endif; ?>
+                      <div class="kny-notif-time">
+                        <i class="bi bi-clock"></i> <?= date('d M Y, H:i', strtotime($notif['created_at'])) ?>
+                      </div>
                     </div>
                   </div>
                 </a>
@@ -373,8 +382,8 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
 .kny-navbar__search--mobile { padding: .75rem 1.5rem; max-width: 100%; }
 /* Notification Dropdown */
 .kny-notif-dropdown {
-  width: 340px !important;
-  max-width: 90vw !important;
+  width: 420px !important;
+  max-width: 95vw !important;
   padding: 0 !important;
   border: 1px solid var(--border) !important;
   border-radius: var(--radius-lg) !important;
@@ -382,7 +391,7 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
   overflow: hidden;
 }
 .kny-notif-header {
-  padding: .9rem 1.25rem;
+  padding: .85rem 1.25rem;
   border-bottom: 1px solid var(--border);
   background: var(--cream);
 }
@@ -390,42 +399,122 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
   padding: 2rem 1.25rem;
   text-align: center;
   color: var(--text-muted);
-  font-size: .85rem;
+  font-size: .9rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: .5rem;
 }
 .kny-notif-item {
-  padding: .85rem 1.25rem !important;
+  padding: 1rem 1.25rem !important;
   border-bottom: 1px solid var(--border) !important;
   transition: background .2s;
+  display: block !important;
+  text-decoration: none !important;
+  width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  white-space: normal !important;
 }
 .kny-notif-item:last-child { border-bottom: none !important; }
 .kny-notif-item:hover { background: var(--cream) !important; }
 .kny-notif-item.unread { background: #f0f7ff; }
 .kny-notif-item.unread:hover { background: #e8f0ff; }
 .kny-notif-icon {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 1rem;
+  font-size: 1.2rem;
 }
 .kny-notif-icon.processing { background: #fff8ec; color: var(--accent); }
-.kny-notif-icon.shipped { background: #eff6ff; color: var(--primary); }
+.kny-notif-icon.shipped { background: #eff6ff; color: #3b82f6; }
 .kny-notif-icon.completed { background: #ecfaf4; color: var(--success); }
 .kny-notif-icon.cancelled { background: #fdf0f0; color: var(--danger); }
 .kny-notif-icon.pending { background: #f5f5f5; color: var(--text-muted); }
-.kny-notif-content { flex: 1; min-width: 0; }
-.kny-notif-title { font-size: .85rem; font-weight: 600; color: var(--primary); margin-bottom: .2rem; }
-.kny-notif-message { font-size: .78rem; color: var(--text-mid); line-height: 1.4; }
-.kny-notif-time { font-size: .7rem; color: var(--text-muted); margin-top: .3rem; }
+.kny-notif-content { flex: 1; min-width: 0; word-wrap: break-word; overflow-wrap: break-word; }
+.kny-notif-row {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  width: 100%;
+}
+.kny-notif-body {
+  flex: 1;
+  min-width: 0;
+  width: calc(100% - 50px);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+.kny-notif-title {
+ width: 100%;
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: .3rem;
+  line-height: 1.3;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+.kny-notif-message {
+  width: 100%;
+  font-size: .82rem;
+  color: var(--text-mid);
+  line-height: 1.5;
+  display: block;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal !important;
+}
+.kny-notif-action, .kny-notif-badge {
+  width: auto;
+  max-width: 100%;
+  background: linear-gradient(135deg, #fff8ec, #fff3d9);
+  color: #8a6d3b;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: .78rem;
+  font-weight: 700;
+  margin-top: .4rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  border: 1px solid #f0cb7a;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal !important;
+}
+.kny-notif-time {
+  width: 100%;
+  font-size: .72rem;
+  color: var(--text-muted);
+  margin-top: .4rem;
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  white-space: nowrap;
+}
+.kny-notif-badge {
+  background: linear-gradient(135deg, #fff8ec, #fff3d9);
+  color: #8a6d3b;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: .7rem;
+  font-weight: 700;
+  margin-top: .35rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  border: 1px solid #f0cb7a;
+  word-wrap: break-word;
+  max-width: 100%;
+}
 .kny-notif-footer {
-  padding: .75rem 1.25rem;
+  padding: .75rem 1rem;
   border-top: 1px solid var(--border);
   background: var(--cream);
 }
@@ -485,5 +574,20 @@ function markNotificationsRead() {
       }
     })
     .catch(err => console.log('Error marking notifications read:', err));
+}
+
+// Show order detail modal and mark as read when notification is clicked
+function showNotifOrderDetail(orderId) {
+  // Mark this specific notification as read via AJAX
+  fetch('../history/mark-notifications-read.php?order_id=' + orderId)
+    .then(response => response.json())
+    .then(data => {
+      // Then redirect to history page with highlight
+      window.location.href = '../history/history.php?highlight=' + orderId;
+    })
+    .catch(err => {
+      // Even if fetch fails, still redirect
+      window.location.href = '../history/history.php?highlight=' + orderId;
+    });
 }
 </script>

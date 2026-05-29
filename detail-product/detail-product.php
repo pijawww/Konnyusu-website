@@ -1,12 +1,10 @@
 <?php
 // detail-product/detail-product.php
 session_start();
+require_once __DIR__ . '/../config/cart.php';
 include __DIR__ . '/../data/products.php';
 
-$cartTotalItems = 0;
-if (isset($_SESSION['cart'])) {
-    foreach ($_SESSION['cart'] as $item) $cartTotalItems += $item['quantity'];
-}
+$cartTotalItems = getCartCount();
 
 $id      = isset($_GET['id']) ? (int)$_GET['id'] : 1;
 $product = findProduct($id);

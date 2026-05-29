@@ -228,4 +228,95 @@ function changePassword(int $userId, string $currentPassword, string $newPasswor
 
 initUserProfileColumns();
 initNotificationColumn();
+
+/**
+ * Generate password reset token
+ */
+function generateResetToken(string $email): ?array {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("SELECT user_id, email FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch();
+
+        if (!$user) {
+            return null; // User not found
+        }
+
+        // Generate unique token
+        $token = bin2hex(random_bytes(32));
+        $expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
+
+        // Store token in database (add columns if not exist)
+        try {
+            $pdo->exec("ALTER TABLE users ADD COLUMN reset_token VARCHAR(64) NULL");
+        } catch (Exception $e) {
+            // Column might already exist
+        }
+        try {
+            $pdo->exec("ALTER TABLE users ADD COLUMN reset_token_expires DATETIME NULL");
+        } catch (Exception $e) {
+            // Column might already exist
+        }
+
+        $stmt = $pdo->prepare("UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE user_id = ?");
+        $stmt->execute([hash('sha256', $token), $expires, $user['user_id']]);
+
+        return [
+            'token' => $token,
+            'expires' => $expires,
+            'email' => $email
+        ];
+    } catch (Exception $e) {
+        error_log("Generate reset token failed: " . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Verify reset token
+ */
+function verifyResetToken(string $token): ?array {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("SELECT user_id, email, reset_token_expires FROM users WHERE reset_token = ?");
+        $stmt->execute([hash('sha256', $token)]);
+        $user = $stmt->fetch();
+
+        if (!$user) {
+            return null;
+        }
+
+        // Check if token expired
+        if (strtotime($user['reset_token_expires']) < time()) {
+            return null;
+        }
+
+        return $user;
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+/**
+ * Reset password with token
+ */
+function resetPasswordWithToken(string $token, string $newPassword): bool {
+    global $pdo;
+    try {
+        $user = verifyResetToken($token);
+        if (!$user) {
+            return false;
+        }
+
+        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare("UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE user_id = ?");
+        $stmt->execute([$hashedPassword, $user['user_id']]);
+
+        return true;
+    } catch (Exception $e) {
+        error_log("Reset password failed: " . $e->getMessage());
+        return false;
+    }
+}
 ?>

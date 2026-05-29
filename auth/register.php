@@ -272,6 +272,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       font-weight: 500;
     }
 
+    /* Password toggle */
+    .password-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .password-input-wrapper input {
+      width: 100%;
+    }
+    .password-toggle {
+      position: absolute;
+      right: 1rem;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      transition: color 0.2s;
+    }
+    .password-toggle:hover {
+      color: var(--text-dark);
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       .auth-page {
@@ -377,8 +404,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="form-group">
           <label class="form-label">Kata Sandi</label>
-          <input type="password" name="password" id="pwdInput" class="form-input"
-                 placeholder="Minimal 6 karakter" required oninput="checkStrength(this.value)">
+          <div class="password-input-wrapper" style="background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 0 1rem;">
+            <input type="password" name="password" id="pwdInput" class="form-input"
+                   placeholder="Minimal 6 karakter" required oninput="checkStrength(this.value)"
+                   style="border: none; background: transparent; padding: .75rem 0; flex: 1;">
+            <button type="button" class="password-toggle" onclick="togglePassword('pwdInput')">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
           <div class="strength-bar">
             <div class="strength-bar__fill" id="strengthBar"></div>
           </div>
@@ -386,8 +419,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="form-group">
           <label class="form-label">Konfirmasi Kata Sandi</label>
-          <input type="password" name="confirm_password" class="form-input"
-                 placeholder="Ulangi kata sandi" required>
+          <div class="password-input-wrapper" style="background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 0 1rem;">
+            <input type="password" name="confirm_password" id="confirmPwdInput" class="form-input"
+                   placeholder="Ulangi kata sandi" required
+                   style="border: none; background: transparent; padding: .75rem 0; flex: 1;">
+            <button type="button" class="password-toggle" onclick="togglePassword('confirmPwdInput')">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
         </div>
 
         <div class="checkbox-custom">
@@ -438,6 +477,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
       bar.style.width = '0';
       lbl.textContent = '';
+    }
+  }
+
+  function togglePassword(fieldId) {
+    const field = document.getElementById(fieldId);
+    const button = event.currentTarget;
+    const icon = button.querySelector('i');
+
+    if (field.type === 'password') {
+      field.type = 'text';
+      icon.classList.remove('bi-eye');
+      icon.classList.add('bi-eye-slash');
+    } else {
+      field.type = 'password';
+      icon.classList.remove('bi-eye-slash');
+      icon.classList.add('bi-eye');
     }
   }
 </script>

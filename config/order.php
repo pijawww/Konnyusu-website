@@ -155,7 +155,8 @@ function getCancellationNote(int $orderId): string {
 function getUserUnviewedCount(int $userId): int {
     global $pdo;
     try {
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ? AND viewed_by_user = 0 AND order_status NOT IN ('pending', 'completed', 'cancelled')");
+        // Count only active orders (processing/shipped) that are unread
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ? AND viewed_by_user = 0 AND order_status IN ('processing', 'shipped')");
         return (int) $stmt->fetchColumn();
     } catch (Exception $e) {
         return 0;
@@ -168,7 +169,9 @@ function getUserUnviewedCount(int $userId): int {
 function getUnviewedNotificationCount(int $userId): int {
     global $pdo;
     try {
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ? AND viewed_by_user = 0 AND order_status NOT IN ('pending', 'completed', 'cancelled')");
+        // Count all order status changes that are unread (processing, shipped, completed, cancelled)
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ? AND viewed_by_user = 0 AND order_status IN ('processing', 'shipped', 'completed', 'cancelled')");
+        $stmt->execute([$userId]);
         return (int) $stmt->fetchColumn();
     } catch (Exception $e) {
         return 0;
@@ -181,34 +184,58 @@ function getUnviewedNotificationCount(int $userId): int {
 function getUserNotifications(int $userId, int $limit = 10): array {
     global $pdo;
     try {
-        $stmt = $pdo->prepare("SELECT order_id AS id, order_status, viewed_by_user AS is_read, order_date AS created_at, cancellation_note FROM orders WHERE user_id = ? AND order_status NOT IN ('pending', 'completed', 'cancelled') ORDER BY order_date DESC LIMIT ?");
-        $stmt->execute([$userId, $limit]);
+        // Get ALL order changes that need to be notified (processing, shipped, completed, cancelled)
+        // Use hardcoded LIMIT to avoid PDO parameter issues
+        $sql = "SELECT order_id AS id, order_status, viewed_by_user AS is_read, order_date AS created_at, cancellation_note
+                FROM orders WHERE user_id = ? AND order_status IN ('processing', 'shipped', 'completed', 'cancelled')
+                ORDER BY order_date DESC LIMIT 10";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$userId]);
         $orders = $stmt->fetchAll();
-        
+
         $notifications = [];
         foreach ($orders as $order) {
             $title = '';
             $message = '';
-            
+            $actionText = '';
+            $iconClass = '';
+            $statusLabel = '';
+
             switch ($order['order_status']) {
                 case 'processing':
-                    $title = 'Pesanan Diproses';
-                    $message = "Pesanan #" . $order['id'] . " sedang diproses";
+                    $title = 'Pesanan Sedang Diproses';
+                    $statusLabel = 'DIPROSES';
+                    $actionText = '🔄 Admin telah mengklik tombol "PROSES"';
+                    $message = "Pesanan #{$order['id']} sekarang sedang diproses oleh tim kami. Mohon tunggu beberapa saat ya!";
+                    $iconClass = 'processing';
                     break;
                 case 'shipped':
-                    $title = 'Pesanan Dikirim';
-                    $message = "Pesanan #" . $order['id'] . " sedang dalam perjalanan";
+                    $title = 'Pesanan Sedang Dikirim';
+                    $statusLabel = 'DIKIRIM';
+                    $actionText = '📦 Admin telah mengklik tombol "KIRIM"';
+                    $message = "Pesanan #{$order['id']} sedang dalam perjalanan. Ditunggu aja, sebentar lagi sampai!";
+                    $iconClass = 'shipped';
                     break;
                 case 'completed':
                     $title = 'Pesanan Selesai';
-                    $message = "Pesanan #" . $order['id'] . " telah selesai";
+                    $statusLabel = 'SELESAI';
+                    $actionText = '✅ Pesanan telah selesai dan diterima';
+                    $message = "Yeay! Pesanan #{$order['id']} telah selesai. Terima kasih sudah memesan di Konnyusu!";
+                    $iconClass = 'completed';
                     break;
                 case 'cancelled':
                     $title = 'Pesanan Dibatalkan';
-                    $message = $order['cancellation_note'] ?: "Pesanan #" . $order['id'] . " dibatalkan";
+                    $statusLabel = 'DIBATALKAN';
+                    $actionText = !empty($order['cancellation_note'])
+                        ? '❌ Admin membatalkan. Alasan: ' . $order['cancellation_note']
+                        : '❌ Admin membatalkan pesanan ini';
+                    $message = $order['cancellation_note']
+                        ? "Mohon maaf, pesanan #{$order['id']} telah dibatalkan. Alasan: " . $order['cancellation_note']
+                        : "Mohon maaf, pesanan #{$order['id']} telah dibatalkan oleh admin.";
+                    $iconClass = 'cancelled';
                     break;
             }
-            
+
             if ($title) {
                 $notifications[] = [
                     'id' => $order['id'],
@@ -217,12 +244,17 @@ function getUserNotifications(int $userId, int $limit = 10): array {
                     'order_status' => $order['order_status'],
                     'order_id' => $order['id'],
                     'is_read' => $order['is_read'],
-                    'created_at' => $order['created_at']
+                    'created_at' => $order['created_at'],
+                    'action_text' => $actionText,
+                    'status_label' => $statusLabel,
+                    'icon_class' => $iconClass,
+                    'cancellation_note' => $order['cancellation_note'] ?? ''
                 ];
             }
         }
         return $notifications;
     } catch (Exception $e) {
+        error_log('getUserNotifications error: ' . $e->getMessage());
         return [];
     }
 }
