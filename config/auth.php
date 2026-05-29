@@ -91,6 +91,35 @@ function login(string $email, string $password): bool {
 /**
  * Register new user
  */
+function getPasswordPolicy(): string {
+    return 'Password harus minimal 8 karakter, dan mengandung huruf besar, huruf kecil, angka, serta simbol.';
+}
+
+function validatePassword(string $password): array {
+    $errors = [];
+
+    if (strlen($password) < 8) {
+        $errors[] = 'Password minimal 8 karakter.';
+    }
+    if (!preg_match('/[A-Z]/', $password)) {
+        $errors[] = 'Harus mengandung minimal satu huruf besar.';
+    }
+    if (!preg_match('/[a-z]/', $password)) {
+        $errors[] = 'Harus mengandung minimal satu huruf kecil.';
+    }
+    if (!preg_match('/[0-9]/', $password)) {
+        $errors[] = 'Harus mengandung minimal satu angka.';
+    }
+    if (!preg_match('/[^A-Za-z0-9]/', $password)) {
+        $errors[] = 'Harus mengandung minimal satu simbol.';
+    }
+
+    return [
+        'success' => empty($errors),
+        'error' => implode(' ', $errors)
+    ];
+}
+
 function register(string $name, string $email, string $password, string $phone = null, string $address = null): bool {
     global $pdo;
     try {
@@ -211,8 +240,9 @@ function changePassword(int $userId, string $currentPassword, string $newPasswor
             return ['success' => false, 'error' => 'Kata sandi lama salah'];
         }
 
-        if (strlen($newPassword) < 6) {
-            return ['success' => false, 'error' => 'Kata sandi baru minimal 6 karakter'];
+        $validation = validatePassword($newPassword);
+        if (!$validation['success']) {
+            return ['success' => false, 'error' => $validation['error']];
         }
 
         $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);

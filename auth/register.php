@@ -17,10 +17,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Semua kolom wajib diisi.';
     } elseif ($pass !== $conf) {
         $error = 'Kata sandi tidak cocok.';
-    } elseif (strlen($pass) < 6) {
-        $error = 'Kata sandi minimal 6 karakter.';
     } else {
-        if (register($name, $email, $pass, $phone ?: null)) {
+        $validation = validatePassword($pass);
+        if (!$validation['success']) {
+            $error = $validation['error'];
+        } elseif (register($name, $email, $pass, $phone ?: null)) {
             $success = true;
         } else {
             $error = 'Email sudah terdaftar. Silakan gunakan email lain.';
@@ -406,7 +407,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <label class="form-label">Kata Sandi</label>
           <div class="password-input-wrapper" style="background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 0 1rem;">
             <input type="password" name="password" id="pwdInput" class="form-input"
-                   placeholder="Minimal 6 karakter" required oninput="checkStrength(this.value)"
+                   placeholder="Minimal 8 karakter, gunakan huruf besar, huruf kecil, angka, dan simbol"
+                   required oninput="checkStrength(this.value)"
                    style="border: none; background: transparent; padding: .75rem 0; flex: 1;">
             <button type="button" class="password-toggle" onclick="togglePassword('pwdInput')">
               <i class="bi bi-eye"></i>
@@ -455,9 +457,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     const bar = document.getElementById('strengthBar');
     const lbl = document.getElementById('strengthLabel');
     let score = 0;
-    if (val.length >= 6) score++;
-    if (val.length >= 10) score++;
+    if (val.length >= 8) score++;
+    if (val.length >= 12) score++;
     if (/[A-Z]/.test(val)) score++;
+    if (/[a-z]/.test(val)) score++;
     if (/[0-9]/.test(val)) score++;
     if (/[^A-Za-z0-9]/.test(val)) score++;
 

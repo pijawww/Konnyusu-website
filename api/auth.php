@@ -47,7 +47,11 @@ if ($method === 'POST') {
         $email = trim($input['email'] ?? '');
         $password = $input['password'] ?? '';
         
-        if (register($name, $email, $password)) {
+        $validation = validatePassword($password);
+        if (!$validation['success']) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $validation['error']]);
+        } elseif (register($name, $email, $password)) {
             echo json_encode(['success' => true, 'message' => 'Registrasi berhasil']);
         } else {
             http_response_code(400);

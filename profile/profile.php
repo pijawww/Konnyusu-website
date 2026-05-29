@@ -44,7 +44,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
 $passwordMsg = '';
 $passwordMsgType = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
-    $result = changePassword($currentUser['user_id'], $_POST['old_password'] ?? '', $_POST['new_password'] ?? '');
+    $newPassword = $_POST['new_password'] ?? '';
+    $confirmPassword = $_POST['confirm_password'] ?? '';
+
+    if ($newPassword !== $confirmPassword) {
+        $result = ['success' => false, 'error' => 'Kata sandi baru dan konfirmasi tidak cocok.'];
+    } else {
+        $result = changePassword($currentUser['user_id'], $_POST['old_password'] ?? '', $newPassword);
+    }
+
     if ($result['success']) {
         $passwordMsg = 'Kata sandi berhasil diubah!';
         $passwordMsgType = 'success';
@@ -330,12 +338,12 @@ $userStats = ['orders' => $orderCount];
           <input type="password" name="old_password" placeholder="Masukkan kata sandi lama" required style="width:100%;background:var(--cream);border:1.5px solid var(--border);border-radius:var(--radius-md);padding:.7rem 1rem;font-family:var(--font-body);font-size:.88rem;color:var(--text-dark);outline:none;">
         </div>
         <div class="form-group" style="margin-bottom:1rem;">
-          <label style="display:block;font-size:.8rem;font-weight:600;color:var(--text-mid);margin-bottom:.4rem;">Kata Sandi Baru <small style="font-weight:400;color:var(--text-muted);">minimal 6 karakter</small></label>
-          <input type="password" name="new_password" placeholder="Masukkan kata sandi baru" required minlength="6" style="width:100%;background:var(--cream);border:1.5px solid var(--border);border-radius:var(--radius-md);padding:.7rem 1rem;font-family:var(--font-body);font-size:.88rem;color:var(--text-dark);outline:none;">
+          <label style="display:block;font-size:.8rem;font-weight:600;color:var(--text-mid);margin-bottom:.4rem;">Kata Sandi Baru <small style="font-weight:400;color:var(--text-muted);">minimal 8 karakter dan kombinasi huruf besar, kecil, angka, simbol</small></label>
+          <input type="password" name="new_password" placeholder="Masukkan kata sandi baru" required minlength="8" style="width:100%;background:var(--cream);border:1.5px solid var(--border);border-radius:var(--radius-md);padding:.7rem 1rem;font-family:var(--font-body);font-size:.88rem;color:var(--text-dark);outline:none;">
         </div>
         <div class="form-group" style="margin-bottom:0;">
           <label style="display:block;font-size:.8rem;font-weight:600;color:var(--text-mid);margin-bottom:.4rem;">Konfirmasi Sandi Baru</label>
-          <input type="password" name="confirm_password" placeholder="Ulangi kata sandi baru" required minlength="6" style="width:100%;background:var(--cream);border:1.5px solid var(--border);border-radius:var(--radius-md);padding:.7rem 1rem;font-family:var(--font-body);font-size:.88rem;color:var(--text-dark);outline:none;">
+          <input type="password" name="confirm_password" placeholder="Ulangi kata sandi baru" required minlength="8" style="width:100%;background:var(--cream);border:1.5px solid var(--border);border-radius:var(--radius-md);padding:.7rem 1rem;font-family:var(--font-body);font-size:.88rem;color:var(--text-dark);outline:none;">
         </div>
       </div>
       <div style="padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.75rem;">

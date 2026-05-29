@@ -47,34 +47,101 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
   }
   .auth-visual::before {
     content: '';
-    position: absolute;
-    width: 400px; height: 400px;
-    background: rgba(255,255,255,.05);
-    border-radius: 50%;
-    top: -100px; right: -100px;
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 70% 30%, rgba(212,168,83,.15) 0%, transparent 60%);
   }
-  .auth-visual::after {
-    content: '';
-    position: absolute;
-    width: 300px; height: 300px;
-    background: rgba(255,255,255,.03);
-    border-radius: 50%;
-    bottom: -80px; left: -80px;
+  .auth-visual__content { position: relative; z-index: 1; text-align: center; color: #fff; }
+  .auth-visual__logo {
+    font-family: var(--font-display);
+    font-size: 2.5rem; font-weight: 800;
+    color: #fff; margin-bottom: .5rem;
   }
-  .auth-form-panel {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 3rem;
+  .auth-visual__logo-img {
+    width: 200px; height: auto; max-height: 200px; object-fit: contain;
+    border-radius: 28px;
+    display: block; margin: 0 auto 1.5rem;
+    animation: float 4s ease-in-out infinite;
+    background: #fff; padding: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  }
+  .auth-visual__text { font-size: 1.1rem; line-height: 1.65;
+                       color: rgba(255,255,255,.8); max-width: 320px; margin: 0 auto 2rem; }
+  .auth-visual__dots { display: flex; gap: .5rem; justify-content: center; margin-top: 2rem; }
+  .auth-visual__dots span {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(255,255,255,.35);
+  }
+  .auth-visual__dots span.active { background: var(--accent); width: 24px; border-radius: 4px; }
+
+  .auth-form-wrap {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 3rem 2rem;
     background: var(--cream);
   }
-  .auth-form-card {
+  .auth-form-box {
+    width: 100%; max-width: 420px;
+  }
+  .auth-form-box h2 {
+    font-family: var(--font-display);
+    font-size: 1.9rem; font-weight: 700;
+    color: var(--primary); margin-bottom: .4rem;
+  }
+  .auth-form-box p { color: var(--text-muted); font-size: .9rem; margin-bottom: 2rem; }
+
+  .form-group { margin-bottom: 1.1rem; }
+  .form-label {
+    display: block;
+    font-size: .82rem; font-weight: 600;
+    color: var(--text-mid); margin-bottom: .4rem;
+    letter-spacing: .03em;
+  }
+  .form-input {
     width: 100%;
-    max-width: 400px;
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: .75rem 1rem;
+    font-family: var(--font-body);
+    font-size: .9rem;
+    color: var(--text-dark);
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .form-input:focus {
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(46,107,79,.12);
+  }
+  .btn-submit {
+    width: 100%;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-xl);
+    padding: .85rem;
+    font-family: var(--font-body);
+    font-size: 1rem; font-weight: 700;
+    cursor: pointer;
+    margin-top: .5rem;
+    transition: background .2s, transform .15s;
+  }
+  .btn-submit:hover { background: var(--primary-light); transform: translateY(-1px); }
+  .auth-switch { text-align: center; font-size: .88rem; color: var(--text-muted); margin-top: 1.5rem; }
+  .auth-switch a { color: var(--primary); font-weight: 700; }
+  .alert-error {
+    background: #fff0f0; border: 1px solid #f5b8b8;
+    color: var(--danger); border-radius: var(--radius-md);
+    padding: .75rem 1rem; font-size: .85rem; margin-bottom: 1.25rem;
+    display: flex; align-items: center; gap: .5rem;
   }
   @media (max-width: 768px) {
-    .auth-visual { display: none; }
     .auth-page { grid-template-columns: 1fr; }
+    .auth-visual { display: none; }
+    .auth-form-wrap { padding: 2rem 1.25rem; }
+  }
+  @keyframes float {
+    0%,100% { transform: translateY(0); }
+    50%      { transform: translateY(-12px); }
   }
   </style>
 </head>
@@ -82,39 +149,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
 <div class="auth-page">
 
   <div class="auth-visual">
-    <img src="../assets/img/logo.jpeg" alt="Konnyusu" style="height: 100px; margin-bottom: 1.5rem; opacity: .9;">
-    <h2 style="font-family: var(--font-display); font-size: 2rem; color: #fff; margin-bottom: .5rem;">Konnyusu</h2>
-    <p style="color: rgba(255,255,255,.65); font-size: .95rem;">Kopi & Minuman Premium</p>
+    <div class="auth-visual__content">
+      <img src="../assets/img/logo.jpeg" alt="Konnyusu" class="auth-visual__logo-img">
+      <div class="auth-visual__logo">Konnyusu</div>
+      <p class="auth-visual__text">Masukkan email Anda untuk menerima link reset password.</p>
+      <div class="auth-visual__dots">
+        <span class="active"></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
   </div>
 
-  <div class="auth-form-panel">
-    <div class="auth-form-card">
-      <div class="text-center mb-4">
-        <h4 style="font-family: var(--font-display); color: var(--primary);">Lupa Password?</h4>
-        <p style="color: var(--text-muted); font-size: .85rem;">Masukkan email Anda untuk reset password</p>
-      </div>
+  <div class="auth-form-wrap">
+    <div class="auth-form-box animate-fadeup">
+      <h2>Lupa Password?</h2>
+      <p>Masukkan email terdaftar Anda untuk mengirim link reset.</p>
 
       <?php if ($error): ?>
-      <div style="background: #fff0f0; border: 1px solid #f5b8b8; color: var(--danger); padding: .75rem 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; font-size: .85rem;">
-        <i class="bi bi-exclamation-circle"></i> <?= htmlspecialchars($error) ?>
-      </div>
+        <div class="alert-error"><i class="bi bi-exclamation-circle"></i> <?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
 
       <form method="POST" action="">
-        <div style="margin-bottom: 1rem;">
-          <label style="display: block; font-size: .8rem; font-weight: 600; color: var(--text-mid); margin-bottom: .4rem;">Alamat Email</label>
-          <input type="email" name="email" required placeholder="nama@email.com"
-                 style="width: 100%; background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: .7rem 1rem; font-family: var(--font-body); font-size: .88rem; color: var(--text-dark); outline: none;">
+        <div class="form-group">
+          <label class="form-label">Alamat Email</label>
+          <input type="email" name="email" class="form-input" required placeholder="nama@email.com"
+                 value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
         </div>
-        <button type="submit" style="width: 100%; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-md); padding: .7rem 1rem; font-weight: 600; font-size: .88rem; cursor: pointer;">
-          <i class="bi bi-envelope"></i> Kirim Link Reset
-        </button>
+        <button type="submit" class="btn-submit"><i class="bi bi-envelope"></i> Kirim Link Reset</button>
       </form>
 
-      <div style="text-align: center; margin-top: 1.5rem;">
-        <a href="login.php" style="color: var(--primary); font-size: .85rem; text-decoration: none;">
-          <i class="bi bi-arrow-left"></i> Kembali ke Login
-        </a>
+      <div class="auth-switch">
+        <a href="login.php"><i class="bi bi-arrow-left"></i> Kembali ke Login</a>
       </div>
     </div>
   </div>

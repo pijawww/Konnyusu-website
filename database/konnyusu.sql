@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: May 21, 2026 at 01:39 PM
+-- Generation Time: May 29, 2026 at 05:53 AM
 -- Server version: 8.0.30
 -- PHP Version: 8.1.10
 
@@ -40,8 +40,8 @@ CREATE TABLE `cart` (
 --
 
 INSERT INTO `cart` (`cart_id`, `user_id`, `date`, `status`, `created_at`) VALUES
-(1, 2, '2026-05-21 10:20:26', 'active', '2026-05-21 10:20:26'),
-(2, 1, '2026-05-21 10:30:59', 'active', '2026-05-21 10:30:59');
+(1, 2, '2026-05-29 05:29:36', 'active', '2026-05-29 05:29:36'),
+(2, 1, '2026-05-29 05:40:04', 'active', '2026-05-29 05:40:04');
 
 -- --------------------------------------------------------
 
@@ -88,16 +88,16 @@ CREATE TABLE `menu` (
 --
 
 INSERT INTO `menu` (`menu_id`, `name`, `description`, `price`, `category`, `image`, `stock`, `is_new`, `is_best`, `sold`, `created_at`, `updated_at`) VALUES
-(1, 'Ice Aren Latte', 'Es kopi susu dengan gula aren dan kopi espresso premium', 11000, 'coffee', 'prod_6a0efb7f134ce.jpeg', 50, 0, 1, 0, '2026-05-21 12:33:03', '2026-05-21 12:37:10'),
-(2, 'Ice Shaken Caramel Latte', 'Es Kopi Susu dengan Gula Aren, Krimer dan Kopi Espresso Premium dan Topping Whippe Cream dan Saus Caramel Premium', 19000, 'coffee', 'prod_6a0efbc5c3c3c.jpeg', 50, 0, 1, 0, '2026-05-21 12:34:13', '2026-05-21 12:34:22'),
-(3, 'Ice Cappucinno', 'Es Kopi Susu dengan Kopi Espresso Premium', 13000, 'coffee', 'prod_6a0efc0ebdfd9.jpeg', 30, 0, 0, 0, '2026-05-21 12:35:26', '2026-05-21 12:35:26'),
+(1, 'Ice Aren Latte', 'Es kopi susu dengan gula aren dan kopi espresso premium', 11000, 'coffee', 'prod_6a0efb7f134ce.jpeg', 50, 0, 1, 3, '2026-05-21 12:33:03', '2026-05-23 09:36:23'),
+(2, 'Ice Shaken Caramel Latte', 'Es Kopi Susu dengan Gula Aren, Krimer dan Kopi Espresso Premium dan Topping Whippe Cream dan Saus Caramel Premium', 19000, 'coffee', 'prod_6a0efbc5c3c3c.jpeg', 50, 0, 1, 3, '2026-05-21 12:34:13', '2026-05-29 05:13:28'),
+(3, 'Ice Cappucinno', 'Es Kopi Susu dengan Kopi Espresso Premium', 13000, 'coffee', 'prod_6a0efc0ebdfd9.jpeg', 30, 0, 0, 3, '2026-05-21 12:35:26', '2026-05-29 04:12:27'),
 (4, 'Ice Butter Aren Latte', 'Es kopi susu dengan gula aren dan topping biscuit crumble dan kopi espresso premium', 19000, 'coffee', 'prod_6a0efc5c2df8f.jpeg', 20, 1, 0, 0, '2026-05-21 12:36:44', '2026-05-21 12:36:44'),
 (5, 'Nyusu Oreo', 'Susu dengan campuran dna topping oreo memiliki rasa yang pas', 12000, 'non-coffee', 'prod_6a0efce2694de.jpeg', 100, 0, 1, 0, '2026-05-21 12:38:58', '2026-05-21 12:38:58'),
 (6, 'Nyusu Regal', 'Susu sapi segar dengan campuran Mari Regal yang khas', 12000, 'non-coffee', 'prod_6a0efd355fc96.jpeg', 18, 0, 0, 0, '2026-05-21 12:40:21', '2026-05-21 12:40:21'),
-(7, 'Nyusu Pisang', 'Susu sapi segar dengan campuran buah pisang yang segar', 12000, 'non-coffee', 'prod_6a0efd75392aa.jpeg', 25, 0, 0, 0, '2026-05-21 12:41:25', '2026-05-21 12:41:25'),
-(8, 'Nyusu Kurma', 'Susu sapi dengan campuran buah kurma yang manis', 12000, 'non-coffee', 'prod_6a0efdbb720bb.jpeg', 30, 0, 0, 0, '2026-05-21 12:42:35', '2026-05-21 12:42:35'),
+(7, 'Nyusu Pisang', 'Susu sapi segar dengan campuran buah pisang yang segar', 12000, 'non-coffee', 'prod_6a0efd75392aa.jpeg', 25, 0, 0, 1, '2026-05-21 12:41:25', '2026-05-29 03:59:55'),
+(8, 'Nyusu Kurma', 'Susu sapi dengan campuran buah kurma yang manis', 12000, 'non-coffee', 'prod_6a0efdbb720bb.jpeg', 30, 0, 0, 2, '2026-05-21 12:42:35', '2026-05-29 05:13:28'),
 (9, 'Nyusu Matcha', 'Susu sapi dengan matcha pilihan', 12000, 'non-coffee', 'prod_6a0efe0c72bd1.jpeg', 28, 0, 1, 0, '2026-05-21 12:43:56', '2026-05-21 12:43:56'),
-(10, 'Siomay Goreng', 'Siomay goreng yang enak untuk camilan', 15000, 'makanan', 'prod_6a0f095fc6f31.jpg', 18, 1, 0, 0, '2026-05-21 13:32:15', '2026-05-21 13:32:15');
+(10, 'Siomay Goreng', 'Siomay goreng yang enak untuk camilan', 15000, 'makanan', 'prod_6a0f095fc6f31.jpg', 18, 1, 0, 3, '2026-05-21 13:32:15', '2026-05-29 05:13:28');
 
 -- --------------------------------------------------------
 
@@ -181,16 +181,18 @@ CREATE TABLE `users` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `birthdate` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `gender` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `bio` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL
+  `bio` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `reset_token` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `reset_token_expires` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`user_id`, `name`, `username`, `email`, `password`, `phone`, `address`, `role`, `notifications_enabled`, `created_at`, `updated_at`, `birthdate`, `gender`, `bio`) VALUES
-(1, 'Admin Konnyusu', 'admin', 'admin@konnyusu.com', '$2y$10$d4FUx8IRAXQqg1SVPrgMHu1qtTAJfaebL5isW8Xm3qkNJ1F8zEnxa', NULL, NULL, 'admin', 1, '2026-05-18 14:27:54', '2026-05-18 14:27:54', NULL, NULL, NULL),
-(2, 'Zuhrufatin Nisya', NULL, 'zuhruffatin@gmail.com', '$2y$10$mmw4PTVkn/TQuzubqsG57.AC86fx4PR.5SAlAbgdSdfb7pKdAtWBS', '89603593717', NULL, 'user', 1, '2026-05-18 16:07:47', '2026-05-21 08:21:37', '', 'female', '');
+INSERT INTO `users` (`user_id`, `name`, `username`, `email`, `password`, `phone`, `address`, `role`, `notifications_enabled`, `created_at`, `updated_at`, `birthdate`, `gender`, `bio`, `reset_token`, `reset_token_expires`) VALUES
+(1, 'Admin Konnyusu', 'admin', 'admin@konnyusu.com', '$2y$10$fyCrNtYeL06NpTOaT0Z/zO58QWnTu7j1ryxiu/EZU2pYlVnG6jOJK', NULL, NULL, 'admin', 1, '2026-05-18 14:27:54', '2026-05-29 05:32:34', NULL, NULL, NULL, 'bec8900e3358eb81a63d77a44da3258109d96810397b43de2069a84329896794', '2026-05-29 06:32:34'),
+(2, 'Zuhrufatin Nisya', NULL, 'zuhruffatin@gmail.com', '$2y$10$gbPRTje.5R20woyiCgGKw.YV6WmwUpIDrXvtJGXvgi3vhtJtxyA..', '089603593717', '', 'user', 1, '2026-05-18 16:07:47', '2026-05-29 05:45:17', '', 'female', '', '7d377e8747b9823ee551ed861a2d7b5b896721036f4cb36e359f53e4d900aaa4', '2026-05-29 06:45:17');
 
 --
 -- Indexes for dumped tables
