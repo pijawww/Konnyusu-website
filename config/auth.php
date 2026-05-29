@@ -40,12 +40,19 @@ function updateNotificationSetting(int $userId, bool $enabled): bool {
 function isNotificationsEnabled(int $userId): bool {
     global $pdo;
     try {
+        // First check if column exists
+        $stmt = $pdo->query("SHOW COLUMNS FROM users LIKE 'notifications_enabled'");
+        if ($stmt->rowCount() === 0) {
+            // Column doesn't exist, default to enabled
+            return true;
+        }
         $stmt = $pdo->prepare("SELECT notifications_enabled FROM users WHERE user_id = ?");
         $stmt->execute([$userId]);
         $result = $stmt->fetchColumn();
-        return (bool) ($result !== false ? $result : true);
+        // If NULL or column exists with any value, return true as default
+        return $result !== '0';
     } catch (Exception $e) {
-        return true; // Default to enabled if column doesn't exist
+        return true; // Default to enabled if any error
     }
 }
 

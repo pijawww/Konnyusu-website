@@ -219,7 +219,10 @@ function removeFromCart($itemId): bool {
  */
 function clearCart(): bool {
     global $pdo;
-    
+
+    // Also clear buy_now_cart if set
+    unset($_SESSION['buy_now_cart']);
+
     $cartId = getOrCreateCart();
     if ($cartId > 0) {
         // Database cart

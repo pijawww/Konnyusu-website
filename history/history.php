@@ -16,9 +16,11 @@ if (isset($_SESSION['cart'])) {
 $currentUser = getCurrentUser();
 $ordersData = getUserOrders($currentUser['user_id']);
 
-// Mark all orders as viewed by user
+// Mark only active order notifications as viewed (processing/shipped only, NOT completed/cancelled)
 foreach ($ordersData as $ord) {
-    markOrderAsViewedByUser($ord['order_id'], $currentUser['user_id']);
+    if (in_array($ord['order_status'], ['processing', 'shipped'])) {
+        markOrderAsViewedByUser($ord['order_id'], $currentUser['user_id']);
+    }
 }
 
 // Process orders for display
@@ -292,7 +294,7 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
           <?php endif; ?>
         </div>
         <div class="order-actions">
-          <?php if(in_array($order['order_status'], ['shipped', 'processing'])): ?>
+          <?php if($order['order_status'] === 'shipped'): ?>
           <a href="complete-order.php?order_id=<?= $order['order_id'] ?>" class="btn-sm-brand" style="background:var(--success);border-color:var(--success);">
             <i class="bi bi-check-circle"></i> Pesanan Diterima
           </a>

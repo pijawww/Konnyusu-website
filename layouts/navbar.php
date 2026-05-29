@@ -73,9 +73,9 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
 
     <!-- Cart + Mobile Toggle -->
     <div class="kny-navbar__actions">
-      <?php if ($currentUser && $currentUser['role'] !== 'admin' && $notificationsEnabled): ?>
+      <?php if ($currentUser && $currentUser['role'] !== 'admin'): ?>
         <div class="dropdown" id="notifDropdownWrapper">
-          <button class="kny-navbar__bell" id="notifBellBtn" title="Notifikasi" data-bs-toggle="dropdown" aria-expanded="false" onclick="markNotificationsRead()">
+          <button class="kny-navbar__bell" id="notifBellBtn" title="Notifikasi" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="bi bi-bell" style="color: var(--primary);"></i>
             <?php if ($userNotifCount > 0): ?>
               <span id="notifBadge" style="position:absolute;top:-4px;right:-6px;min-width:18px;height:18px;background:var(--danger);color:#fff;border-radius:50%;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;border:2px solid rgba(26,60,46,0.5);"><?= $userNotifCount ?></span>
@@ -457,6 +457,11 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
 <script>
 document.getElementById('navToggle')?.addEventListener('click', function() {
   document.getElementById('mobileMenu').classList.toggle('open');
+});
+
+// Mark notifications as read when dropdown is opened
+document.getElementById('notifBellBtn')?.addEventListener('shown.bs.dropdown', function() {
+  markNotificationsRead();
 });
 
 function markNotificationsRead() {

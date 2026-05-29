@@ -12,7 +12,7 @@ if (isset($_POST['order_id']) && isset($_POST['status'])) {
     $cancellationNote = $_POST['cancellation_note'] ?? '';
 
     // Validasi status
-    $validStatuses = ['pending', 'processing', 'sent', 'completed', 'cancelled'];
+    $validStatuses = ['pending', 'processing', 'shipped', 'completed', 'cancelled'];
     if (in_array($status, $validStatuses)) {
         updateOrderStatus($orderId, $status, $cancellationNote);
     }

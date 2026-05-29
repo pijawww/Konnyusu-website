@@ -869,7 +869,7 @@ function changeQty(delta) {
   input.value = val;
 }
 
-function addToCart(redirectTo = 'cart') {
+function addToCart(redirectTo = 'cart', buyNow = false) {
   if (!currentProduct) return;
 
   const qty = parseInt(document.getElementById('modalQty').value);
@@ -901,6 +901,11 @@ function addToCart(redirectTo = 'cart') {
 
   addField('redirect', redirectTo);
 
+  // Flag for buy now - this item only
+  if (buyNow) {
+    addField('buy_now', '1');
+  }
+
   document.body.appendChild(form);
   form.submit();
 }
@@ -927,7 +932,7 @@ document.getElementById('btnBuyNow').addEventListener('click', () => {
     }, 150);
     return;
   }
-  addToCart('checkout');
+  addToCart('checkout', true); // true = buy now (this item only)
 });
 
 // ---- Scroll reveal ----

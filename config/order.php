@@ -155,7 +155,7 @@ function getCancellationNote(int $orderId): string {
 function getUserUnviewedCount(int $userId): int {
     global $pdo;
     try {
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ? AND viewed_by_user = 0 AND order_status != 'pending'");
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ? AND viewed_by_user = 0 AND order_status NOT IN ('pending', 'completed', 'cancelled')");
         return (int) $stmt->fetchColumn();
     } catch (Exception $e) {
         return 0;
@@ -163,10 +163,16 @@ function getUserUnviewedCount(int $userId): int {
 }
 
 /**
- * Get unviewed notification count (alias for getUserUnviewedCount)
+ * Get unviewed notification count (only unread notifications)
  */
 function getUnviewedNotificationCount(int $userId): int {
-    return getUserUnviewedCount($userId);
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ? AND viewed_by_user = 0 AND order_status NOT IN ('pending', 'completed', 'cancelled')");
+        return (int) $stmt->fetchColumn();
+    } catch (Exception $e) {
+        return 0;
+    }
 }
 
 /**
@@ -175,7 +181,7 @@ function getUnviewedNotificationCount(int $userId): int {
 function getUserNotifications(int $userId, int $limit = 10): array {
     global $pdo;
     try {
-        $stmt = $pdo->prepare("SELECT order_id AS id, order_status, viewed_by_user AS is_read, order_date AS created_at, cancellation_note FROM orders WHERE user_id = ? AND order_status != 'pending' ORDER BY order_date DESC LIMIT ?");
+        $stmt = $pdo->prepare("SELECT order_id AS id, order_status, viewed_by_user AS is_read, order_date AS created_at, cancellation_note FROM orders WHERE user_id = ? AND order_status NOT IN ('pending', 'completed', 'cancelled') ORDER BY order_date DESC LIMIT ?");
         $stmt->execute([$userId, $limit]);
         $orders = $stmt->fetchAll();
         
@@ -189,7 +195,7 @@ function getUserNotifications(int $userId, int $limit = 10): array {
                     $title = 'Pesanan Diproses';
                     $message = "Pesanan #" . $order['id'] . " sedang diproses";
                     break;
-                case 'sent':
+                case 'shipped':
                     $title = 'Pesanan Dikirim';
                     $message = "Pesanan #" . $order['id'] . " sedang dalam perjalanan";
                     break;

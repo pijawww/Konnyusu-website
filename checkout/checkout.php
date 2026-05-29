@@ -9,26 +9,38 @@ include __DIR__ . '/../data/products.php';
 // Require login
 requireLogin();
 
+// Check if this is a "buy now" flow - use buy_now_cart if available
+$isBuyNow = isset($_SESSION['buy_now_cart']) && !empty($_SESSION['buy_now_cart']);
+
 // Get selected items or all cart items
 $allCartItems = getCartItems();
 $selectedItemsIds = [];
 
-if (isset($_POST['selected_items']) && !empty($_POST['selected_items'])) {
-    $selectedItemsIds = explode(',', $_POST['selected_items']);
-    $selectedItemsIds = array_map('intval', $selectedItemsIds);
-}
-
-// Filter cart items to only selected ones
-$cartItems = [];
-if (!empty($selectedItemsIds)) {
-    foreach ($allCartItems as $item) {
-        $itemId = isset($item['cart_item_id']) ? (int)$item['cart_item_id'] : (int)$item['id'];
-        if (in_array($itemId, $selectedItemsIds)) {
-            $cartItems[] = $item;
-        }
-    }
+// For buy now flow, use only the buy_now_cart item
+if ($isBuyNow) {
+    // Use the buy_now_cart item only
+    $cartItems = [$_SESSION['buy_now_cart']];
 } else {
-    $cartItems = $allCartItems;
+    // Normal flow: use selected items or all cart items
+    $selectedItemsIds = [];
+
+    if (isset($_POST['selected_items']) && !empty($_POST['selected_items'])) {
+        $selectedItemsIds = explode(',', $_POST['selected_items']);
+        $selectedItemsIds = array_map('intval', $selectedItemsIds);
+    }
+
+    // Filter cart items to only selected ones
+    $cartItems = [];
+    if (!empty($selectedItemsIds)) {
+        foreach ($allCartItems as $item) {
+            $itemId = isset($item['cart_item_id']) ? (int)$item['cart_item_id'] : (int)$item['id'];
+            if (in_array($itemId, $selectedItemsIds)) {
+                $cartItems[] = $item;
+            }
+        }
+    } else {
+        $cartItems = $allCartItems;
+    }
 }
 
 // Calculate totals based on selected items
@@ -113,6 +125,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             foreach ($selectedItemsIds as $itemId) {
                 removeFromCart($itemId);
             }
+        } elseif ($isBuyNow) {
+            // For buy now flow, only clear the buy_now_cart
+            unset($_SESSION['buy_now_cart']);
         } else {
             clearCart();
         }
