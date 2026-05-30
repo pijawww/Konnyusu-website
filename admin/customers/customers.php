@@ -344,6 +344,65 @@ if ($stats['total'] > 0) {
   </div>
 </div>
 
+<!-- Add Customer Modal -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal-box">
+    
+    <div class="modal-header">
+      <h5>
+        <i class="bi bi-person-plus me-2"></i>
+        Tambah Pelanggan
+      </h5>
+
+      <button onclick="closeModal('addModal')"
+        style="background:none;border:none;font-size:1.25rem;cursor:pointer;color:var(--text-muted);">
+        ×
+      </button>
+    </div>
+
+    <form>
+      <div class="modal-body">
+
+        <div class="form-group">
+          <label>Nama Lengkap *</label>
+          <input type="text" placeholder="Masukkan nama pelanggan">
+        </div>
+
+        <div class="form-group">
+          <label>Email *</label>
+          <input type="email" placeholder="Masukkan email">
+        </div>
+
+        <div class="form-group">
+          <label>No. Telepon</label>
+          <input type="text" placeholder="08xxxxxxxxxx">
+        </div>
+
+        <div class="form-group">
+          <label>Alamat</label>
+          <textarea rows="3" placeholder="Alamat lengkap"></textarea>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button type="button"
+          onclick="closeModal('addModal')"
+          class="btn-outline-brand">
+
+          Batal
+        </button>
+
+        <button type="submit" class="btn-brand">
+          <i class="bi bi-plus-lg me-1"></i>
+          Tambah
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 function openModal(id){document.getElementById(id).classList.add('open');}
