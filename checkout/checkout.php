@@ -433,34 +433,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 <?php if ($orderSuccess && $orderId): ?>
 <div class="success-overlay" id="successOverlay">
   <div class="success-box">
-    <span class="success-icon">🎉</span>
-    <h3>Pesanan Berhasil!</h3>
+
+    <h3>Pembayaran Pesanan</h3>
+
     <p>
-      Pesanan Anda <strong>#<?= $orderId ?></strong> telah diterima.<br>
-      Kami akan segera memproses pesanan Anda.
+      Silakan lakukan pembayaran terlebih dahulu
+      sebelum pesanan diproses admin.
     </p>
-    <div style="background:var(--cream);border-radius:var(--radius-md);padding:1rem;margin-bottom:1.5rem;font-size:.85rem;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:.4rem;">
-        <span style="color:var(--text-muted);">Metode Pembayaran</span>
-        <strong style="color:var(--primary);">
-          <?= htmlspecialchars($paymentMethodNames[$paymentMethod] ?? $paymentMethod) ?>
-        </strong>
+
+    <div style="margin:1.5rem 0;text-align:center;">
+      <img src="../assets/img/qris.png"
+           alt="QRIS"
+           style="width:220px;border-radius:12px;border:1px solid var(--border);display:block;margin:0 auto;">
+    </div>
+
+    <div style="background:var(--cream);padding:1rem;border-radius:12px;margin-bottom:1rem;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
+        <span>Total Bayar</span>
+        <strong><?= formatRupiah($total) ?></strong>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:.4rem;">
-        <span style="color:var(--text-muted);">Total Bayar</span>
-        <strong style="color:var(--primary);"><?= formatRupiah($total) ?></strong>
-      </div>
+
       <div style="display:flex;justify-content:space-between;">
-        <span style="color:var(--text-muted);">Waktu Pesan</span>
-        <span><?= date('d M Y, H:i') ?></span>
+        <span>Order ID</span>
+        <strong>#<?= $orderId ?></strong>
       </div>
     </div>
-    <a href="../history/history.php" class="btn-brand" style="display:block;text-align:center;padding:.85rem;">
-      Lacak Pesanan
-    </a>
-    <a href="../home/home.php" style="display:block;text-align:center;margin-top:.75rem;font-size:.85rem;color:var(--text-muted);">
-      Kembali Belanja
-    </a>
+
+    <form onsubmit="showPaymentSuccess(event)">
+    
+        <div class="form-group" style="text-align:left;">
+            <label>Upload Bukti Pembayaran</label>
+
+            <input type="file"
+                  id="paymentProof"
+                  accept="image/*"
+                  required>
+        </div>
+
+        <button type="submit"
+                class="btn-brand"
+                style="width:100%;margin-top:1rem;">
+            Kirim Bukti Pembayaran
+        </button>
+    </form>
+
   </div>
 </div>
 <?php endif; ?>
@@ -549,6 +565,35 @@ const checkedDelivery = document.querySelector('.delivery-opt input:checked');
 if (checkedDelivery) checkedDelivery.closest('.delivery-opt').style.borderColor = 'var(--primary)';
 updateSummary();
 updatePaymentDisplay();
+
+function showPaymentSuccess(event) {
+    event.preventDefault();
+
+    const overlay = document.querySelector('.success-box');
+
+    overlay.innerHTML = `
+        <div style="text-align:center;">
+            <div style="margin-bottom:1rem;">
+                <i class="bi bi-check-circle-fill"
+                  style="font-size:4rem;color:var(--success);"></i>
+            </div>
+
+            <h3 style="color:var(--primary);margin-bottom:.75rem;">
+                Bukti Pembayaran Berhasil Dikirim
+            </h3>
+
+            <p style="color:var(--text-muted);margin-bottom:1.5rem;">
+                Pembayaran Anda sedang menunggu konfirmasi admin.
+            </p>
+
+            <a href="../history/history.php"
+               class="btn-brand"
+               style="display:block;padding:.9rem;text-align:center;">
+               Lihat Status Pesanan
+            </a>
+        </div>
+    `;
+}
 </script>
 </body>
 </html>
