@@ -8,12 +8,37 @@ require_once __DIR__ . '/../../data/products.php';
 
 requireAdmin();
 
+// Get all completed orders for stats
 $completeStats = getCompleteStats();
-$topProducts = getTopSellingProducts(5);
-$weeklyRevenue = getWeeklyRevenue();
 $allOrders = getAllOrders(); // From order.php
+
 // Filter only completed or cancelled orders for "Semua Pesanan" card
 $filteredOrders = array_filter($allOrders, fn($o) => in_array($o['order_status'], ['completed', 'cancelled']));
+
+// Get top selling products from actual order data
+function getTopSellingProductsFromOrders(int $limit = 5): array {
+    global $pdo;
+    $stmt = $pdo->query("
+        SELECT m.menu_id AS id, m.name, m.description, m.price, m.category, m.image,
+               COALESCE(SUM(oi.quantity), 0) AS sold
+        FROM menu m
+        LEFT JOIN order_item oi ON m.menu_id = oi.menu_id
+        LEFT JOIN orders o ON oi.order_id = o.order_id AND o.order_status = 'completed'
+        GROUP BY m.menu_id
+        HAVING sold > 0
+        ORDER BY sold DESC
+        LIMIT $limit
+    ");
+    $results = $stmt->fetchAll();
+
+    // If no data, return some sample products
+    if (empty($results)) {
+        $stmt = $pdo->query("SELECT menu_id AS id, name, description, price, category, image, sold FROM menu ORDER BY sold DESC LIMIT $limit");
+        $results = $stmt->fetchAll();
+    }
+
+    return $results;
+}
 
 // Stats data
 $stats = [
@@ -22,6 +47,8 @@ $stats = [
     'total_sold'      => $completeStats['total_sold'],
     'total_products'  => $completeStats['total_products']
 ];
+
+$topProducts = getTopSellingProductsFromOrders(5);
 
 function getStatusLabel(string $status): string {
     $labels = [
@@ -88,6 +115,24 @@ function getStatusLabel(string $status): string {
 .k-badge-accent{background:#fff8ec;color:var(--accent);}
 .k-badge-gray{background:#f5f5f5;color:var(--text-muted);}
 .k-badge-red{background:#fdf0f0;color:var(--danger);}
+.k-badge-blue{background:#eff6ff;color:#3b82f6;}
+/* Top products card styling */
+.top-product-item{display:flex;align-items:center;gap:.85rem;padding:.85rem;background:var(--cream);border-radius:var(--radius-md);margin-bottom:.6rem;transition:all .2s;}
+.top-product-item:hover{background:var(--cream-dark);}
+.top-product-item:last-child{margin-bottom:0;}
+.product-rank{width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;flex-shrink:0;}
+.product-rank.gold{background:linear-gradient(135deg,#f59e0b,#d97706);}
+.product-rank.silver{background:linear-gradient(135deg,#9ca3af,#6b7280);}
+.product-rank.bronze{background:linear-gradient(135deg,#cd7f32,#a0522d);}
+.product-img{width:48px;height:48px;border-radius:var(--radius-md);object-fit:cover;flex-shrink:0;}
+.product-info{flex:1;min-width:0;}
+.product-name{font-size:.88rem;font-weight:600;color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.product-sold{font-size:.75rem;color:var(--text-muted);margin-top:.15rem;}
+.product-bar{width:100%;height:5px;background:var(--cream-dark);border-radius:3px;margin-top:.4rem;overflow:hidden;}
+.product-bar-fill{height:100%;background:var(--primary);border-radius:3px;transition:width .5s ease;}
+.product-sales{text-align:right;flex-shrink:0;}
+.product-sales-count{font-size:.95rem;font-weight:700;color:var(--primary);}
+.product-sales-label{font-size:.65rem;color:var(--text-muted);}
 @media(max-width:900px){.admin-sidebar{display:none;}.admin-body{padding:1.25rem;}}
 @media print{
     .admin-sidebar,.admin-topbar,.no-print{display:none!important;}
@@ -147,8 +192,8 @@ function getStatusLabel(string $status): string {
       $statData = [
         ['icon'=>'bi-receipt-cutoff','cls'=>'green','val'=>number_format($stats['total_orders']),'lbl'=>'Total Pesanan'],
         ['icon'=>'bi-cash-stack','cls'=>'amber','val'=>'Rp '.number_format($stats['total_revenue']/1000000,1).'Jt','lbl'=>'Total Pendapatan'],
-        ['icon'=>'bi-cup-hot','cls'=>'purple','val'=>$stats['total_sold'],'lbl'=>'Produk Terjual'],
-        ['icon'=>'bi-cart-check','cls'=>'blue','val'=>$stats['total_products'],'lbl'=>'Total Produk'],
+        ['icon'=>'bi-cup-hot','cls'=>'purple','val'=>number_format($stats['total_sold']),'lbl'=>'Produk Terjual'],
+        ['icon'=>'bi-cart-check','cls'=>'blue','val'=>number_format($stats['total_products']),'lbl'=>'Total Produk'],
       ];
       foreach ($statData as $s):
       ?>
@@ -166,28 +211,44 @@ function getStatusLabel(string $status): string {
     <div class="row g-4 mb-4">
       <div class="col-lg-4">
         <div class="chart-box">
-          <h6>Produk Terlaris</h6>
-          <?php foreach ($topProducts as $i => $p): if(empty($p['sold'])) continue;?>
-          <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.9rem;">
-            <span style="width:28px;height:28px;border-radius:50%;background:var(--cream-dark);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:var(--primary);flex-shrink:0;"><?=$i+1?></span>
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:.82rem;font-weight:600;color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?=htmlspecialchars($p['name'])?></div>
-              <div style="height:5px;background:var(--cream-dark);border-radius:3px;margin-top:.3rem;overflow:hidden;">
-                <?php $maxSold = $topProducts[0]['sold'] ?? 1;?>
-                <div style="height:100%;width:<?=round(($p['sold']/$maxSold)*100)?>%;background:var(--primary);border-radius:3px;"></div>
+          <h6><i class="bi bi-trophy me-1 text-warning"></i>Produk Terlaris</h6>
+          <?php if(empty($topProducts)): ?>
+          <div style="text-align:center;padding:2rem;color:var(--text-muted);">
+            <i class="bi bi-inbox" style="font-size:2.5rem;margin-bottom:.75rem;"></i>
+            <p style="font-size:.85rem;margin:0;">Belum ada data penjualan</p>
+          </div>
+          <?php else:
+            $maxSold = $topProducts[0]['sold'] ?? 1;
+            $rankClasses = ['gold', 'silver', 'bronze', '', ''];
+            foreach ($topProducts as $i => $p):
+              $rankClass = $rankClasses[$i] ?? '';
+              $barWidth = $maxSold > 0 ? round(($p['sold'] / $maxSold) * 100) : 0;
+          ?>
+          <div class="top-product-item">
+            <div class="product-rank <?= $rankClass ?>"><?= $i + 1 ?></div>
+            <img src="../../assets/img/products/<?= htmlspecialchars($p['image']) ?>"
+                 class="product-img"
+                 onerror="this.src='https://placehold.co/48x48/1a3c2e/f0cb7a?text=<?= substr($p['name'], 0, 1) ?>'">
+            <div class="product-info">
+              <div class="product-name" title="<?= htmlspecialchars($p['name']) ?>"><?= htmlspecialchars($p['name']) ?></div>
+              <div class="product-sold"><?= number_format($p['sold']) ?> terjual</div>
+              <div class="product-bar">
+                <div class="product-bar-fill" style="width:<?= $barWidth ?>%"></div>
               </div>
             </div>
-            <div style="text-align:right;flex-shrink:0;">
-              <div style="font-size:.78rem;font-weight:700;color:var(--primary);"><?=$p['sold']?></div>
+            <div class="product-sales">
+              <div class="product-sales-count"><?= number_format($p['sold']) ?></div>
+              <div class="product-sales-label">unit</div>
             </div>
           </div>
-          <?php endforeach;?>
+          <?php endforeach; ?>
+          <?php endif; ?>
         </div>
       </div>
 
       <div class="col-lg-8">
         <div class="chart-box">
-          <h6>Semua Pesanan</h6>
+          <h6><i class="bi bi-list-ul me-1"></i>Semua Pesanan</h6>
           <div style="overflow-x:auto;">
             <table class="k-table">
               <thead>
@@ -203,7 +264,12 @@ function getStatusLabel(string $status): string {
                   <td><?=htmlspecialchars($o['user_name'] ?? 'Pelanggan')?></td>
                   <td style="color:var(--text-muted);font-size:.8rem;"><?=date('d M Y',strtotime($o['order_date']))?></td>
                   <td style="font-weight:700;"><?=formatRupiah($o['total'])?></td>
-                  <td><span class="k-badge k-badge-<?=$o['order_status']==='completed'?'green':($o['order_status']==='pending'?'accent':($o['order_status']==='cancelled'?'red':'gray'))?>"><?=getStatusLabel($o['order_status'])?></span></td>
+                  <td>
+                    <?php
+                    $statusBadgeClass = $o['order_status'] === 'completed' ? 'k-badge-green' : ($o['order_status'] === 'pending' ? 'k-badge-accent' : ($o['order_status'] === 'cancelled' ? 'k-badge-red' : 'k-badge-gray'));
+                    ?>
+                    <span class="k-badge <?= $statusBadgeClass ?>"><?=getStatusLabel($o['order_status'])?></span>
+                  </td>
                 </tr>
                 <?php endforeach;?>
                 <?php endif;?>
@@ -214,6 +280,7 @@ function getStatusLabel(string $status): string {
       </div>
     </div>
 
+    
   </div>
 </div>
 

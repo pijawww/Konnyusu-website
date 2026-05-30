@@ -26,7 +26,7 @@ $stats = [
 
 function getAllOrdersFromDB(): array {
     global $pdo;
-    $stmt = $pdo->query("SELECT o.*, u.name as user_name, p.payment_method FROM orders o LEFT JOIN users u ON o.user_id = u.user_id LEFT JOIN payment p ON o.order_id = p.order_id ORDER BY o.order_date DESC");
+    $stmt = $pdo->query("SELECT o.*, u.name as user_name, p.payment_method, p.payment_status, p.payment_proof FROM orders o LEFT JOIN users u ON o.user_id = u.user_id LEFT JOIN payment p ON o.order_id = p.order_id ORDER BY o.order_date DESC");
     return $stmt->fetchAll();
 }
 
@@ -128,12 +128,17 @@ function getStatusIcon(string $status): string {
 .cancel-form-group label{display:block;font-size:.8rem;font-weight:600;color:var(--text-dark);margin-bottom:.4rem;}
 .cancel-form-group textarea{width:100%;background:var(--cream);border:1.5px solid var(--border);border-radius:var(--radius-md);padding:.7rem 1rem;font-family:var(--font-body);font-size:.88rem;color:var(--text-dark);outline:none;resize:vertical;min-height:80px;}
 .cancel-form-group textarea:focus{border-color:var(--primary);}
+.payment-proof-thumb{width:60px;height:60px;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--border);cursor:pointer;transition:transform .2s;}
+.payment-proof-thumb:hover{transform:scale(1.05);}
+.payment-proof-section{background:#ecfaf4;border-radius:var(--radius-md);padding:1rem;margin:1rem 0;border:1px solid #a3e0c8;}
+.payment-proof-section img{max-width:100%;border-radius:var(--radius-sm);border:1px solid var(--border);cursor:pointer;}
+.payment-proof-section.empty{background:#fff8ec;border-color:#f0cb7a;}
 @media(max-width:900px){.admin-sidebar{display:none;}.admin-body{padding:1.25rem;}.stat-strip{grid-template-columns:repeat(3,1fr);}}
 @media print{
     *{margin:0!important;padding:0!important;}
     html,body{height:auto!important;page-break-after:avoid!important;}
     .admin-layout,.admin-sidebar,.admin-topbar,.no-print,.stat-strip,.k-table{display:none!important;}
-    #detailModal{display:block!important;position:static!important;width:100%!important;}
+    #detailModal,#imagePreviewModal{display:block!important;position:static!important;width:100%!important;}
     .print-only{display:flex!important;flex-direction:column;align-items:center;justify-content:center;width:100%!important;text-align:center!important;}
     .modal-overlay{display:block!important;position:static!important;background:none!important;backdrop-filter:none!important;width:100%!important;}
     .modal-box{display:block!important;max-width:100%!important;width:100%!important;box-shadow:none!important;border:none!important;padding:0!important;}
@@ -192,7 +197,6 @@ function getStatusIcon(string $status): string {
 
   <div class="admin-body">
 
-
     <!-- Stat Strip -->
     <div class="stat-strip animate-fadeup no-print">
       <div class="stat-strip-card"><div class="stat-strip-card__val"><?= $stats['total'] ?></div><div class="stat-strip-card__lbl">Total Pesanan</div></div>
@@ -243,12 +247,20 @@ function getStatusIcon(string $status): string {
             </tr>
           </thead>
           <tbody>
-          <?php foreach($allOrders as $o): 
+          <?php foreach($allOrders as $o):
             $orderItems = getOrderItems($o['order_id']);
             $customerName = $o['user_name'] ?? 'Pelanggan';
+            $hasProof = !empty($o['payment_proof']);
           ?>
           <tr class="order-row" data-name="<?= strtolower($customerName) ?>" data-id="#<?= $o['order_id'] ?>">
-            <td><span style="font-family:monospace;font-weight:700;color:var(--primary);">#<?= $o['order_id'] ?></span></td>
+            <td>
+              <span style="font-family:monospace;font-weight:700;color:var(--primary);">#<?= $o['order_id'] ?></span>
+              <?php if($hasProof): ?>
+              <span class="k-badge k-badge-green" style="font-size:.65rem;margin-left:.35rem;" title="Bukti pembayaran uploaded">
+                <i class="bi bi-paperclip"></i>
+              </span>
+              <?php endif; ?>
+            </td>
             <td>
               <div style="display:flex;align-items:center;gap:.6rem;">
                 <div style="width:30px;height:30px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;"><?= substr($customerName,0,1) ?></div>
@@ -293,6 +305,8 @@ function getStatusIcon(string $status): string {
                     'recipient_city' => $o['recipient_city'] ?? '-',
                     'recipient_postal' => $o['recipient_postal'] ?? '-',
                     'payment_method' => $o['payment_method'] ?? '-',
+                    'payment_status' => $o['payment_status'] ?? 'pending',
+                    'payment_proof' => $o['payment_proof'] ?? '',
                     'delivery_fee' => $o['delivery_fee'] ?? 0,
                     'tax' => $o['tax'] ?? 0,
                     'cancellation_note' => $cancellationNote
@@ -301,7 +315,7 @@ function getStatusIcon(string $status): string {
                   onmouseover="this.style.background='var(--cream)';this.style.color='var(--primary)'" onmouseout="this.style.background='none';this.style.color='var(--text-muted)'">
                   <i class="bi bi-eye" style="font-size:.8rem;"></i>
                 </button>
-                
+
                 <?php if($o['order_status'] === 'pending'): ?>
                 <form method="post" action="update-status.php" style="display:inline;">
                   <input type="hidden" name="order_id" value="<?= $o['order_id'] ?>">
@@ -357,6 +371,18 @@ function getStatusIcon(string $status): string {
   </div>
 </div>
 
+</div>
+
+<!-- Image Preview Modal -->
+<div class="modal-overlay" id="imagePreviewModal">
+  <div class="modal-box" style="max-width:600px;max-height:90vh;background:#000;">
+    <div style="padding:1rem;display:flex;justify-content:flex-end;">
+      <button onclick="closeImagePreview()" style="background:none;border:none;color:#fff;font-size:1.5rem;cursor:pointer;">×</button>
+    </div>
+    <div style="padding:0 1rem 1.5rem;text-align:center;">
+      <img id="previewImage" src="" alt="Preview" style="max-width:100%;max-height:70vh;border-radius:var(--radius-md);">
+    </div>
+  </div>
 </div>
 
 <!-- Order Detail Modal -->
@@ -419,17 +445,27 @@ document.getElementById('searchInput').addEventListener('input',function(){
   });
 });
 
+// Image preview
+function previewImage(src) {
+  document.getElementById('previewImage').src = src;
+  document.getElementById('imagePreviewModal').classList.add('open');
+}
+
+function closeImagePreview() {
+  document.getElementById('imagePreviewModal').classList.remove('open');
+}
+
 // Detail modal
 function showDetail(o){
   document.getElementById('modalOrderId').textContent='#'+o.order_id;
-  
+
   // Show/hide print button based on status
   const printBtn = document.querySelector('#detailModal .modal-footer .btn-brand');
   const isPrintable = o.status === 'Selesai' || o.status === 'Dibatalkan';
   if (printBtn) {
     printBtn.style.display = isPrintable ? 'inline-flex' : 'none';
   }
-  
+
   let items='';
   o.items.forEach(it=>{
     const itemTotal = (it.price || 0) * (it.quantity || 1);
@@ -438,7 +474,7 @@ function showDetail(o){
       <span style="font-weight:600;color:var(--primary);">Rp ${itemTotal.toLocaleString('id')}</span>
     </div>`;
   });
-  
+
   const paymentMethodNames = {
     'qris': 'QRIS',
     'gopay': 'GoPay',
@@ -482,8 +518,27 @@ function showDetail(o){
 
   const subtotal = o.total - (o.delivery_fee || 0) - (o.tax || 0);
 
-  const paymentMethodWithFee = paymentMethodDisplay + ' - Gratis';
-  
+  // Payment proof section
+  let paymentProofHtml = '';
+  if (o.payment_proof) {
+    const proofUrl = '../../assets/uploads/payment_proofs/' + o.payment_proof;
+    paymentProofHtml = '<div class="payment-proof-section">' +
+      '<div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--success);margin-bottom:.6rem;">' +
+        '<i class="bi bi-paperclip me-1"></i>Bukti Pembayaran' +
+      '</div>' +
+      '<img src="' + proofUrl + '" alt="Bukti Pembayaran" class="payment-proof-thumb" onclick="previewImage(this.src)" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
+      '<div style="display:none;font-size:.78rem;color:var(--text-muted);padding:.5rem;">Gambar tidak ditemukan</div>' +
+      '<p style="font-size:.72rem;color:var(--success);margin:.5rem 0 0 0;"><i class="bi bi-check-circle"></i> Bukti pembayaran sudah diupload oleh pelanggan</p>' +
+    '</div>';
+  } else if (o.payment_method !== 'cod' && o.payment_method !== 'cash') {
+    paymentProofHtml = '<div class="payment-proof-section empty">' +
+      '<div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:.6rem;">' +
+        '<i class="bi bi-clock me-1"></i>Bukti Pembayaran' +
+      '</div>' +
+      '<p style="font-size:.82rem;color:var(--text-mid);margin:0;">Belum ada bukti pembayaran</p>' +
+    '</div>';
+  }
+
   document.getElementById('modalBody').innerHTML=`
     <div class="print-only" style="display:none;text-align:center;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px dashed var(--border);">
       <img src="../../assets/img/logo.jpeg" alt="Konnyusu" style="height:100px;object-fit:contain;margin:0 auto;display:block;">
@@ -505,8 +560,9 @@ function showDetail(o){
     <div style="background:var(--cream);border-radius:var(--radius-md);padding:1rem;margin-bottom:1rem;">
       <div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.6rem;">Detail Pengiriman & Pembayaran</div>
       <div class="detail-row"><span>Metode Pengiriman</span><span>${orderTypeWithFee}</span></div>
-      <div class="detail-row"><span>Metode Pembayaran</span><span>${paymentMethodWithFee}</span></div>
+      <div class="detail-row"><span>Metode Pembayaran</span><span>${paymentMethodDisplay}</span></div>
     </div>
+    ${paymentProofHtml}
     <div style="background:var(--cream);border-radius:var(--radius-md);padding:1rem;margin-bottom:1rem;">
       <div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.6rem;">Item Pesanan</div>
       ${items}
@@ -532,8 +588,10 @@ function showDetail(o){
     </div>`;
   document.getElementById('detailModal').classList.add('open');
 }
+
 function closeModal(){document.getElementById('detailModal').classList.remove('open');}
 document.getElementById('detailModal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.getElementById('imagePreviewModal').addEventListener('click',function(e){if(e.target===this)closeImagePreview();});
 
 // Cancel modal functions
 function openCancelModal(orderId) {

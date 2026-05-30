@@ -7,10 +7,15 @@ require_once __DIR__ . '/../../data/products.php';
 
 requireAdmin();
 
+// Debug: log all POST requests for reset_password
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reset_password') {
+    error_log("DEBUG reset_password: user_id=" . ($_POST['id'] ?? 'N/A') . ", new_password=" . (isset($_POST['new_password']) ? 'SET' : 'NOT SET'));
+}
+
 // Get all users from database
 function getAllUsers(): array {
     global $pdo;
-    $stmt = $pdo->query("SELECT user_id, name, email, phone, address, created_at FROM users ORDER BY created_at DESC");
+    $stmt = $pdo->query("SELECT user_id, name, email, phone, address, created_at, role FROM users ORDER BY created_at DESC");
     return $stmt->fetchAll();
 }
 
@@ -30,15 +35,93 @@ function getUserTotalSpent(int $userId): int {
     return (int) $stmt->fetchColumn();
 }
 
+// Get new customers this month
+function getNewCustomersThisMonth(): int {
+    global $pdo;
+    $stmt = $pdo->query("SELECT COUNT(*) FROM users WHERE MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())");
+    return (int) $stmt->fetchColumn();
+}
+
+// Create new customer with password
+function createCustomer(string $name, string $email, string $password, ?string $phone = null, ?string $address = null): array {
+    global $pdo;
+
+    // Check if email already exists
+    $stmt = $pdo->prepare("SELECT user_id FROM users WHERE email = ?");
+    $stmt->execute([$email]);
+    if ($stmt->fetch()) {
+        return ['success' => false, 'error' => 'Email sudah terdaftar'];
+    }
+
+    // Validate password
+    if (strlen($password) < 8) {
+        return ['success' => false, 'error' => 'Password minimal 8 karakter'];
+    }
+
+    try {
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare("INSERT INTO users (name, email, password, phone, address, role) VALUES (?, ?, ?, ?, ?, 'user')");
+        $stmt->execute([$name, $email, $hashedPassword, $phone, $address]);
+        return ['success' => true, 'user_id' => $pdo->lastInsertId()];
+    } catch (Exception $e) {
+        return ['success' => false, 'error' => 'Gagal membuat pelanggan: ' . $e->getMessage()];
+    }
+}
+
+// Reset customer password
+function resetCustomerPassword(int $userId, string $newPassword): array {
+    global $pdo;
+
+    if (strlen($newPassword) < 8) {
+        return ['success' => false, 'error' => 'Password minimal 8 karakter'];
+    }
+
+    try {
+        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE user_id = ?");
+        $stmt->execute([$hashedPassword, $userId]);
+        $affected = $stmt->rowCount();
+        if ($affected > 0) {
+            return ['success' => true, 'affected' => $affected];
+        } else {
+            return ['success' => false, 'error' => 'User tidak ditemukan'];
+        }
+    } catch (Exception $e) {
+        return ['success' => false, 'error' => 'Gagal reset password: ' . $e->getMessage()];
+    }
+}
+
+// Initialize message variable
 $msg = '';
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $userId = (int) ($_POST['id'] ?? 0);
+    $newPassword = $_POST['new_password'] ?? '';
+
+    // Store debug info to display on page
+    $_SESSION['debug_info'] = "Action: $action | UserID: $userId | Password: " . (isset($_POST['new_password']) ? 'SET' : 'NOT SET');
 
     try {
-        if ($action === 'edit') {
+        if ($action === 'create') {
+            $name = trim($_POST['name'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+            $password = $_POST['password'] ?? '';
+            $phone = trim($_POST['phone'] ?? '');
+            $address = trim($_POST['address'] ?? '');
+
+            if (empty($name) || empty($email) || empty($password)) {
+                $msg = 'error:Nama, email, dan password wajib diisi!';
+            } else {
+                $result = createCustomer($name, $email, $password, $phone, $address);
+                if ($result['success']) {
+                    $msg = 'success:Pelanggan berhasil dibuat! Password: ' . $password;
+                } else {
+                    $msg = 'error:' . $result['error'];
+                }
+            }
+        } elseif ($action === 'edit') {
             $name = trim($_POST['name'] ?? '');
             $email = trim($_POST['email'] ?? '');
             $phone = trim($_POST['phone'] ?? '');
@@ -56,9 +139,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($orderCount > 0) {
                 $msg = 'error:Gagal! Pelanggan memiliki ' . $orderCount . ' pesanan.';
             } else {
-                $stmt = $pdo->prepare("DELETE FROM users WHERE user_id = ?");
+                $stmt = $pdo->prepare("DELETE FROM users WHERE user_id = ? AND role != 'admin'");
                 $stmt->execute([$userId]);
                 $msg = 'success:Pelanggan berhasil dihapus!';
+            }
+        } elseif ($action === 'reset_password') {
+            // Check if user exists first
+            $checkStmt = $pdo->prepare("SELECT user_id, role, name FROM users WHERE user_id = ?");
+            $checkStmt->execute([$userId]);
+            $targetUser = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$targetUser) {
+                $msg = 'error:User ID ' . $userId . ' tidak ditemukan di database!';
+            } else {
+                $newPassword = $_POST['new_password'] ?? '';
+                if (empty($newPassword)) {
+                    $msg = 'error:Password baru wajib diisi!';
+                } elseif (strlen($newPassword) < 8) {
+                    $msg = 'error:Password minimal 8 karakter!';
+                } else {
+                    // Update password directly here
+                    try {
+                        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+                        $updateStmt = $pdo->prepare("UPDATE users SET password = ? WHERE user_id = ?");
+                        $updateStmt->execute([$hashedPassword, $userId]);
+                        $roleLabel = $targetUser['role'] === 'admin' ? 'Admin' : 'Pelanggan';
+                        $msg = 'success:Password ' . $roleLabel . ' (' . htmlspecialchars($targetUser['name']) . ') berhasil direset! Password baru: ' . htmlspecialchars($newPassword);
+                    } catch (Exception $e) {
+                        $msg = 'error:Gagal reset password: ' . $e->getMessage();
+                    }
+                }
             }
         }
     } catch (Exception $e) {
@@ -69,8 +179,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $users = getAllUsers();
 $stats = [
     'total' => count($users),
-    'active' => count($users),
-    'new_mth' => 0,
+    'active' => count(array_filter($users, fn($u) => $u['role'] === 'customer')),
+    'new_mth' => getNewCustomersThisMonth(),
     'avg_spent' => 0
 ];
 
@@ -79,7 +189,7 @@ if ($stats['total'] > 0) {
     foreach ($users as $u) {
         $totalSpent += getUserTotalSpent($u['user_id']);
     }
-    $stats['avg_spent'] = (int)($totalSpent / $stats['total']);
+    $stats['avg_spent'] = $stats['total'] > 0 ? (int)($totalSpent / $stats['total']) : 0;
 }
 ?>
 <!DOCTYPE html>
@@ -127,7 +237,6 @@ if ($stats['total'] > 0) {
 .k-table td{padding:.85rem 1rem;font-size:.855rem;color:var(--text-dark);border-bottom:1px solid var(--border);vertical-align:middle;}
 .k-table tr:last-child td{border-bottom:none;}
 .k-table tr:hover td{background:var(--cream);}
-@media(max-width:900px){.admin-sidebar{display:none;}.admin-body{padding:1.25rem;}.stat-strip{grid-template-columns:1fr 1fr;}}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
 .modal-overlay.open{display:flex;}
 .modal-box{background:var(--white);border-radius:var(--radius-lg);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;animation:fadeUp .3s ease;}
@@ -139,11 +248,16 @@ if ($stats['total'] > 0) {
 .form-group label{display:block;font-size:.8rem;font-weight:600;color:var(--text-mid);margin-bottom:.4rem;}
 .form-group input,.form-group select,.form-group textarea{width:100%;background:var(--cream);border:1.5px solid var(--border);border-radius:var(--radius-md);padding:.7rem 1rem;font-family:var(--font-body);font-size:.88rem;color:var(--text-dark);outline:none;transition:border-color .2s;}
 .form-group textarea{resize:vertical;}
+.form-group input:focus,.form-group textarea:focus{border-color:var(--primary-light);box-shadow:0 0 0 3px rgba(46,107,79,.1);}
+.password-hint{font-size:.72rem;color:var(--text-muted);margin-top:.35rem;}
 .btn-brand{background:var(--primary);color:#fff;border:none;border-radius:var(--radius-md);padding:.6rem 1.2rem;font-family:var(--font-body);font-weight:600;cursor:pointer;transition:background .2s,transform .15s;}
 .btn-brand:hover{background:var(--primary-light);transform:translateY(-1px);}
 .btn-outline-brand{background:transparent;color:var(--primary);border:1.5px solid var(--primary);border-radius:var(--radius-md);padding:.6rem 1.2rem;font-family:var(--font-body);font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none;}
 .btn-outline-brand:hover{background:var(--primary);color:#fff;}
+.btn-danger{background:var(--danger);color:#fff;border:none;border-radius:var(--radius-md);padding:.6rem 1.2rem;font-family:var(--font-body);font-weight:600;cursor:pointer;}
+.btn-danger:hover{background:#c0392b;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:900px){.admin-sidebar{display:none;}.admin-body{padding:1.25rem;}.stat-strip{grid-template-columns:1fr 1fr;}}
 </style>
 </head>
 <body>
@@ -268,6 +382,10 @@ if ($stats['total'] > 0) {
             <td style="font-weight:700;color:var(--primary);"><?= formatRupiah($totalSpent) ?></td>
             <td style="text-align:center">
               <div style="display:flex;align-items:center;gap:.4rem;justify-content:center;">
+                <button onclick="openResetPasswordModal(<?= (int)$u['user_id'] ?>, '<?= htmlspecialchars($u['name'], ENT_QUOTES, 'UTF-8') ?>')"
+                  style="width:32px;height:32px;border-radius:var(--radius-md);border:1px solid var(--border);background:none;display:flex;align-items:center;justify-content:center;color:var(--text-muted);cursor:pointer;" title="Reset Password">
+                  <i class="bi bi-key" style="font-size:.8rem;"></i>
+                </button>
                 <button onclick="openEditModal(this, <?= (int)$u['user_id'] ?>)"
                   data-name="<?= htmlspecialchars($u['name'], ENT_QUOTES, 'UTF-8') ?>"
                   data-email="<?= htmlspecialchars($u['email'], ENT_QUOTES, 'UTF-8') ?>"
@@ -296,22 +414,106 @@ if ($stats['total'] > 0) {
 
 </div>
 
-<!-- Edit Modal -->
+<!-- Add Customer Modal -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h5><i class="bi bi-person-plus me-2"></i>Tambah Pelanggan</h5>
+      <button onclick="closeModal('addModal')" style="background:none;border:none;font-size:1.25rem;cursor:pointer;color:var(--text-muted);">×</button>
+    </div>
+    <form method="POST">
+      <input type="hidden" name="action" value="create">
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nama Lengkap *</label>
+          <input type="text" name="name" placeholder="Masukkan nama lengkap" required>
+        </div>
+        <div class="form-group">
+          <label>Email *</label>
+          <input type="email" name="email" placeholder="nama@email.com" required>
+        </div>
+        <div class="form-group">
+          <label>Password *</label>
+          <input type="text" name="password" placeholder="Minimal 8 karakter" required minlength="8">
+          <div class="password-hint"><i class="bi bi-info-circle"></i> Password ini akan diberikan ke pelanggan untuk login</div>
+        </div>
+        <div class="form-group">
+          <label>No. Telepon</label>
+          <input type="text" name="phone" placeholder="08xxxxxxxxxx">
+        </div>
+        <div class="form-group">
+          <label>Alamat</label>
+          <textarea name="address" rows="3" placeholder="Alamat lengkap"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" onclick="closeModal('addModal')" class="btn-outline-brand" style="font-size:.85rem;padding:.55rem 1.1rem;">Batal</button>
+        <button type="submit" class="btn-brand" style="font-size:.85rem;padding:.55rem 1.2rem;"><i class="bi bi-check-lg me-1"></i>Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Customer Modal -->
 <div class="modal-overlay" id="editModal">
   <div class="modal-box">
-    <div class="modal-header"><h5><i class="bi bi-pencil me-2"></i>Edit Pelanggan</h5>
-    <button onclick="closeModal('editModal')" style="background:none;border:none;font-size:1.25rem;cursor:pointer;color:var(--text-muted);">×</button></div>
+    <div class="modal-header">
+      <h5><i class="bi bi-pencil me-2"></i>Edit Pelanggan</h5>
+      <button onclick="closeModal('editModal')" style="background:none;border:none;font-size:1.25rem;cursor:pointer;color:var(--text-muted);">×</button>
+    </div>
     <form method="POST">
-      <input type="hidden" name="action" value="edit"><input type="hidden" name="id" id="editId">
+      <input type="hidden" name="action" value="edit">
+      <input type="hidden" name="id" id="editId">
       <div class="modal-body">
-        <div class="form-group"><label>Nama Lengkap *</label><input type="text" name="name" id="editName" required></div>
-        <div class="form-group"><label>Email *</label><input type="email" name="email" id="editEmail" required></div>
-        <div class="form-group"><label>No. Telepon</label><input type="text" name="phone" id="editPhone" placeholder="08xxxxxxxxxx"></div>
-        <div class="form-group"><label>Alamat</label><textarea name="address" id="editAddress" rows="3" placeholder="Alamat lengkap"></textarea></div>
+        <div class="form-group">
+          <label>Nama Lengkap *</label>
+          <input type="text" name="name" id="editName" required>
+        </div>
+        <div class="form-group">
+          <label>Email *</label>
+          <input type="email" name="email" id="editEmail" required>
+        </div>
+        <div class="form-group">
+          <label>No. Telepon</label>
+          <input type="text" name="phone" id="editPhone" placeholder="08xxxxxxxxxx">
+        </div>
+        <div class="form-group">
+          <label>Alamat</label>
+          <textarea name="address" id="editAddress" rows="3" placeholder="Alamat lengkap"></textarea>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" onclick="closeModal('editModal')" class="btn-outline-brand" style="font-size:.85rem;padding:.55rem 1.1rem;">Batal</button>
         <button type="submit" class="btn-brand" style="font-size:.85rem;padding:.55rem 1.2rem;"><i class="bi bi-check-lg me-1"></i>Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal-overlay" id="resetPasswordModal">
+  <div class="modal-box" style="max-width:400px;">
+    <div class="modal-header">
+      <h5><i class="bi bi-key me-2"></i>Reset Password</h5>
+      <button onclick="closeModal('resetPasswordModal')" style="background:none;border:none;font-size:1.25rem;cursor:pointer;color:var(--text-muted);">×</button>
+    </div>
+    <form method="POST">
+      <input type="hidden" name="action" value="reset_password">
+      <input type="hidden" name="id" id="resetPasswordUserId">
+      <div class="modal-body">
+        <div style="background:var(--cream);border-radius:var(--radius-md);padding:1rem;margin-bottom:1rem;">
+          <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:.35rem;">Pelanggan</div>
+          <div style="font-weight:700;color:var(--primary);" id="resetPasswordCustomerName">-</div>
+        </div>
+        <div class="form-group">
+          <label>Password Baru *</label>
+          <input type="text" name="new_password" id="newPasswordInput" placeholder="Minimal 8 karakter" required minlength="8">
+          <div class="password-hint"><i class="bi bi-info-circle"></i> Password baru akan langsung aktif</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" onclick="closeModal('resetPasswordModal')" class="btn-outline-brand" style="font-size:.85rem;padding:.55rem 1.1rem;">Batal</button>
+        <button type="submit" class="btn-brand" style="font-size:.85rem;padding:.55rem 1.2rem;"><i class="bi bi-check-lg me-1"></i>Reset Password</button>
       </div>
     </form>
   </div>
@@ -337,69 +539,10 @@ if ($stats['total'] > 0) {
       <button type="button" onclick="closeModal('deleteModal')" class="btn-outline-brand" style="flex:1;font-size:.85rem;padding:.55rem;">
         Batal
       </button>
-      <button type="button" onclick="document.getElementById('deleteForm').submit()" class="btn-brand" style="flex:1;font-size:.85rem;padding:.55rem;background:var(--danger);">
+      <button type="button" onclick="document.getElementById('deleteForm').submit()" class="btn-danger" style="flex:1;font-size:.85rem;padding:.55rem;">
         <i class="bi bi-trash3 me-1"></i>Ya, Hapus
       </button>
     </div>
-  </div>
-</div>
-
-<!-- Add Customer Modal -->
-<div class="modal-overlay" id="addModal">
-  <div class="modal-box">
-    
-    <div class="modal-header">
-      <h5>
-        <i class="bi bi-person-plus me-2"></i>
-        Tambah Pelanggan
-      </h5>
-
-      <button onclick="closeModal('addModal')"
-        style="background:none;border:none;font-size:1.25rem;cursor:pointer;color:var(--text-muted);">
-        ×
-      </button>
-    </div>
-
-    <form>
-      <div class="modal-body">
-
-        <div class="form-group">
-          <label>Nama Lengkap *</label>
-          <input type="text" placeholder="Masukkan nama pelanggan">
-        </div>
-
-        <div class="form-group">
-          <label>Email *</label>
-          <input type="email" placeholder="Masukkan email">
-        </div>
-
-        <div class="form-group">
-          <label>No. Telepon</label>
-          <input type="text" placeholder="08xxxxxxxxxx">
-        </div>
-
-        <div class="form-group">
-          <label>Alamat</label>
-          <textarea rows="3" placeholder="Alamat lengkap"></textarea>
-        </div>
-
-      </div>
-
-      <div class="modal-footer">
-        <button type="button"
-          onclick="closeModal('addModal')"
-          class="btn-outline-brand">
-
-          Batal
-        </button>
-
-        <button type="submit" class="btn-brand">
-          <i class="bi bi-plus-lg me-1"></i>
-          Tambah
-        </button>
-      </div>
-    </form>
-
   </div>
 </div>
 
@@ -421,6 +564,13 @@ function openDeleteModal(btn, id) {
   document.getElementById('deleteId').value = id;
   document.getElementById('deleteCustomerName').textContent = btn.dataset.name;
   openModal('deleteModal');
+}
+
+function openResetPasswordModal(userId, customerName) {
+  document.getElementById('resetPasswordUserId').value = userId;
+  document.getElementById('resetPasswordCustomerName').textContent = customerName;
+  document.getElementById('newPasswordInput').value = '';
+  openModal('resetPasswordModal');
 }
 
 document.querySelectorAll('.modal-overlay').forEach(m=>{

@@ -875,39 +875,120 @@ function addToCart(redirectTo = 'cart', buyNow = false) {
   const qty = parseInt(document.getElementById('modalQty').value);
   const isFood = currentProduct.category === 'makanan';
 
-  // Create form and submit
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = '../cart/add-to-cart.php';
-
-  const addField = (name, value) => {
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = name;
-    input.value = value;
-    form.appendChild(input);
-  };
-
-  addField('id', currentProduct.id);
-  addField('qty', qty);
+  // Create form data
+  const formData = new FormData();
+  formData.append('id', currentProduct.id);
+  formData.append('qty', qty);
 
   // Only send sugar/ice for non-food items
   if (!isFood) {
     const sugar = document.querySelector('input[name="sugar"]:checked').value;
     const ice = document.querySelector('input[name="ice"]:checked').value;
-    addField('sugar_level', sugar);
-    addField('ice_level', ice);
+    formData.append('sugar_level', sugar);
+    formData.append('ice_level', ice);
   }
 
-  addField('redirect', redirectTo);
+  formData.append('redirect', redirectTo);
 
   // Flag for buy now - this item only
   if (buyNow) {
-    addField('buy_now', '1');
+    formData.append('buy_now', '1');
   }
 
-  document.body.appendChild(form);
-  form.submit();
+  // Send via AJAX
+  fetch('../cart/add-to-cart.php', {
+    method: 'POST',
+    body: formData,
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest'
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Update cart badge
+      const badge = document.querySelector('.nav-cart .badge');
+      if (badge) {
+        badge.textContent = data.cart_count;
+        badge.style.display = data.cart_count > 0 ? 'flex' : 'none';
+      }
+
+      // Handle buy now
+      if (data.is_buy_now) {
+        window.location.href = '../checkout/checkout.php';
+        return;
+      }
+
+      // Show toast notification and stay on page
+      showToast('Berhasil ditambahkan ke keranjang!');
+
+      // Hide modal
+      productModal.hide();
+    } else if (data.require_login) {
+      productModal.hide();
+      setTimeout(() => loginWarningModal.show(), 150);
+    } else {
+      alert(data.message || 'Gagal menambahkan ke keranjang');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    // Fallback: submit form normally
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '../cart/add-to-cart.php';
+
+    const addField = (name, value) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    };
+
+    addField('id', currentProduct.id);
+    addField('qty', qty);
+
+    if (!isFood) {
+      const sugar = document.querySelector('input[name="sugar"]:checked').value;
+      const ice = document.querySelector('input[name="ice"]:checked').value;
+      addField('sugar_level', sugar);
+      addField('ice_level', ice);
+    }
+
+    addField('redirect', redirectTo);
+    if (buyNow) addField('buy_now', '1');
+
+    document.body.appendChild(form);
+    form.submit();
+  });
+}
+
+// Toast notification function
+function showToast(message) {
+  // Create toast element
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#fff;border:1px solid #e8e2d9;border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 24px rgba(26,60,46,.12);z-index:9999;animation:slideInToast .4s ease;';
+  toast.innerHTML = `
+    <div style="width:36px;height:36px;background:#ecfaf4;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+      <i class="bi bi-check-lg" style="color:#3b9e7c;font-size:1.1rem;"></i>
+    </div>
+    <span style="font-size:.88rem;font-weight:500;color:#2c3e2f;">${message}</span>
+  `;
+
+  // Add animation style
+  const style = document.createElement('style');
+  style.textContent = '@keyframes slideInToast{from{opacity:0;transform:translateX(100%)}to{opacity:1;transform:translateX(0)}}';
+  document.head.appendChild(style);
+  document.body.appendChild(toast);
+
+  // Remove after 2.5 seconds
+  setTimeout(() => {
+    toast.style.animation = 'slideInToast .3s ease reverse';
+    setTimeout(() => {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 300);
+  }, 2500);
 }
 
 const isLoggedIn = <?= !empty($currentUser) ? 'true' : 'false' ?>;

@@ -115,12 +115,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     border-color: var(--primary-light);
     box-shadow: 0 0 0 3px rgba(46,107,79,.12);
   }
-  .input-wrap { position: relative; }
+  .input-wrap {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+  }
   .input-icon {
-    position: absolute; right: 14px; top: 50%;
+    position: absolute;
+    right: 12px;
+    top: 50%;
     transform: translateY(-50%);
-    color: var(--text-muted); cursor: pointer;
-    font-size: 1rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+    z-index: 5;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+  .input-icon:hover {
+    color: var(--text-dark);
   }
   .btn-submit {
     width: 100%;
@@ -211,11 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label class="form-label mb-0">Kata Sandi</label>
             <a href="forgot-password.php" style="font-size:.78rem;color:var(--primary);font-weight:600;">Lupa Sandi?</a>
           </div>
-          <div class="input-wrap">
-            <input type="password" name="password" id="pwdInput" class="form-input"
-                   placeholder="Masukkan kata sandi" required style="padding-right:2.8rem;">
-            <i class="bi bi-eye input-icon" id="eyeToggle"></i>
-          </div>
+          <input type="password" name="password" id="pwdInput" class="form-input" placeholder="Masukkan kata sandi" required>
         </div>
 
         <div class="d-flex align-items-center gap-2 mb-3">
@@ -253,9 +263,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script>
 document.getElementById('eyeToggle')?.addEventListener('click', function() {
   const inp = document.getElementById('pwdInput');
-  const isText = inp.type === 'text';
-  inp.type = isText ? 'password' : 'text';
-  this.className = 'bi input-icon ' + (isText ? 'bi-eye' : 'bi-eye-slash');
+  const icon = this.querySelector('i');
+  if (!inp) return;
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    icon.className = 'bi bi-eye-slash';
+  } else {
+    inp.type = 'password';
+    icon.className = 'bi bi-eye';
+  }
 });
 </script>
 </body>

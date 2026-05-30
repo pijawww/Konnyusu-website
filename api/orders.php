@@ -81,7 +81,7 @@ if ($method === 'GET') {
     }
     
     $orderId = createOrder($_SESSION['user_id'], $orderItems, $orderType, $notes, $paymentMethod);
-    
+
     if ($orderId) {
         clearCart();
         echo json_encode([
@@ -92,6 +92,64 @@ if ($method === 'GET') {
     } else {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Gagal membuat pesanan']);
+    }
+} elseif ($method === 'POST' && isset($_POST['action']) && $_POST['action'] === 'upload_payment_proof') {
+    // Upload payment proof
+    $orderId = (int)($_POST['order_id'] ?? 0);
+    $userId = $_SESSION['user_id'];
+
+    // Verify order belongs to user
+    global $pdo;
+    $stmt = $pdo->prepare("SELECT order_id FROM orders WHERE order_id = ? AND user_id = ?");
+    $stmt->execute([$orderId, $userId]);
+
+    if (!$stmt->fetch()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Pesanan tidak ditemukan']);
+        exit;
+    }
+
+    if (!isset($_FILES['payment_proof']) || $_FILES['payment_proof']['error'] !== UPLOAD_ERR_OK) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'File tidak valid']);
+        exit;
+    }
+
+    $file = $_FILES['payment_proof'];
+    $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    if (!in_array($file['type'], $allowedTypes)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Format file harus JPG atau PNG']);
+        exit;
+    }
+
+    if ($file['size'] > 2 * 1024 * 1024) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Ukuran file maksimal 2MB']);
+        exit;
+    }
+
+    $uploadDir = __DIR__ . '/../assets/uploads/payment_proofs/';
+    if (!file_exists($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
+
+    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $newFileName = 'proof_' . $orderId . '_' . time() . '.' . $ext;
+    $targetPath = $uploadDir . $newFileName;
+
+    if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+        $stmt = $pdo->prepare("UPDATE payment SET payment_proof = ?, payment_date = NOW() WHERE order_id = ?");
+        $stmt->execute([$newFileName, $orderId]);
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Bukti pembayaran berhasil diupload',
+            'data' => ['proof_url' => 'assets/uploads/payment_proofs/' . $newFileName]
+        ]);
+    } else {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Gagal upload file']);
     }
 } else {
     http_response_code(405);

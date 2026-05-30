@@ -343,11 +343,11 @@ $total       = $subtotal + $deliveryFee + $tax;
         <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:.6rem;">Metode Pembayaran</div>
         <div class="payment-icons">
           <span class="payment-icon">QRIS</span>
-          <span class="payment-icon">BCA</span>
-          <span class="payment-icon">Mandiri</span>
           <span class="payment-icon">GoPay</span>
           <span class="payment-icon">OVO</span>
-          <span class="payment-icon">Dana</span>
+          <span class="payment-icon">DANA</span>
+          <span class="payment-icon">BCA</span>
+          <span class="payment-icon">COD</span>
         </div>
       </div>
     </div>

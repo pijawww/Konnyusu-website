@@ -130,26 +130,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password']) && isset(
     border-color: var(--primary-light);
     box-shadow: 0 0 0 3px rgba(46,107,79,.12);
   }
-  .password-input-wrapper {
-    display: flex; align-items: center;
+  .password-wrap {
     position: relative;
-  }
-  .password-input-wrapper input {
     width: 100%;
+  }
+  .password-wrap input {
+    width: 100%;
+    padding-right: 2.8rem;
   }
   .password-toggle {
     position: absolute;
-    right: 1rem;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
     background: none;
     border: none;
     color: var(--text-muted);
     cursor: pointer;
-    padding: 0.3rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    transition: color 0.2s;
+    padding: 0;
+    font-size: 1.1rem;
+    z-index: 5;
   }
   .password-toggle:hover {
     color: var(--text-dark);
@@ -229,21 +229,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password']) && isset(
             <div class="form-group">
               <label class="form-label">Password Baru</label>
               <div style="font-size:.78rem; color: var(--text-muted); margin-bottom:.5rem;">Minimal 8 karakter, gunakan huruf besar, huruf kecil, angka, dan simbol.</div>
-              <div class="password-input-wrapper">
-                <input type="password" name="password" id="password" class="form-input" required placeholder="Masukkan password baru">
-                <button type="button" class="password-toggle" onclick="togglePassword('password')">
-                  <i class="bi bi-eye"></i>
-                </button>
-              </div>
+              <input type="password" name="password" id="password" class="form-input" required placeholder="Masukkan password baru">
             </div>
             <div class="form-group">
               <label class="form-label">Konfirmasi Password</label>
-              <div class="password-input-wrapper">
-                <input type="password" name="confirm_password" id="confirm_password" class="form-input" required placeholder="Ulangi password baru">
-                <button type="button" class="password-toggle" onclick="togglePassword('confirm_password')">
-                  <i class="bi bi-eye"></i>
-                </button>
-              </div>
+              <input type="password" name="confirm_password" id="confirm_password" class="form-input" required placeholder="Ulangi password baru">
             </div>
             <button type="submit" class="btn-submit"><i class="bi bi-key"></i> Reset Password</button>
           </form>

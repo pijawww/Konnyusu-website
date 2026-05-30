@@ -21,9 +21,6 @@ if ($highlightOrderId) {
     $showHighlightBanner = true;
 }
 
-// DO NOT mark as viewed here - let user see notifications first!
-// Notifications will be marked as read when user opens the notification dropdown in navbar
-
 // Process orders for display
 $orders = [];
 foreach ($ordersData as $ord) {
@@ -40,8 +37,14 @@ foreach ($ordersData as $ord) {
             'menu_id' => $oi['menu_id']
         ];
     }
-    
-    // Map status - sesuai dengan flow: pending=Menunggu, processing=Diproses, shipped=Dikirim, completed=Selesai, cancelled=Dibatalkan
+
+    // Get payment info
+    global $pdo;
+    $stmt = $pdo->prepare("SELECT payment_method, payment_status, payment_proof FROM payment WHERE order_id = ?");
+    $stmt->execute([$ord['order_id']]);
+    $payment = $stmt->fetch();
+
+    // Map status
     $statusMap = [
         'pending'    => 'Menunggu',
         'processing' => 'Diproses',
@@ -49,9 +52,9 @@ foreach ($ordersData as $ord) {
         'completed'  => 'Selesai',
         'cancelled'  => 'Dibatalkan'
     ];
-    
+
     $status = isset($statusMap[$ord['order_status']]) ? $statusMap[$ord['order_status']] : $ord['order_status'];
-    
+
     $orders[] = [
         'id' => '#' . $ord['order_id'],
         'order_id' => $ord['order_id'],
@@ -60,7 +63,9 @@ foreach ($ordersData as $ord) {
         'order_status' => $ord['order_status'],
         'items' => $items,
         'total' => $ord['total'],
-        'payment' => 'QRIS',
+        'payment' => $payment['payment_method'] ?? 'qris',
+        'payment_status' => $payment['payment_status'] ?? 'pending',
+        'payment_proof' => $payment['payment_proof'] ?? '',
         'rating' => null,
         'cancellation_note' => $ord['cancellation_note'] ?? '',
         'cancelled_by_admin' => isset($ord['cancelled_by_admin']) ? (bool)$ord['cancelled_by_admin'] : false,
@@ -95,6 +100,42 @@ $totalOrders = count($orders);
 $completedOrders = count(array_filter($orders, fn($o) => $o['status']==='Selesai'));
 $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status']==='Selesai'), 'total'));
 
+// Check for order success from session
+$showOrderSuccess = isset($_SESSION['order_success']) && $_SESSION['order_success'];
+$successOrderId = isset($_SESSION['order_id']) ? $_SESSION['order_id'] : null;
+if ($showOrderSuccess) {
+    unset($_SESSION['order_success']);
+    unset($_SESSION['order_id']);
+}
+
+// Handle upload bukti pembayaran
+$uploadSuccess = false;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'upload_payment_proof') {
+    $orderIdForUpload = (int)($_POST['order_id'] ?? 0);
+    if ($orderIdForUpload > 0 && isset($_FILES['payment_proof']) && $_FILES['payment_proof']['error'] === UPLOAD_ERR_OK) {
+        $uploadDir = __DIR__ . '/../assets/uploads/payment_proofs/';
+        if (!file_exists($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $file = $_FILES['payment_proof'];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        if (in_array($file['type'], $allowedTypes) && $file['size'] <= 2 * 1024 * 1024) {
+            $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $newFileName = 'proof_' . $orderIdForUpload . '_' . time() . '.' . $ext;
+            $targetPath = $uploadDir . $newFileName;
+
+            if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+                // Update database
+                global $pdo;
+                $stmt = $pdo->prepare("UPDATE payment SET payment_proof = ?, payment_date = NOW() WHERE order_id = ?");
+                $stmt->execute([$newFileName, $orderIdForUpload]);
+                $uploadSuccess = true;
+            }
+        }
+    }
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -110,12 +151,10 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
   .page-header { margin-bottom:2rem; }
   .page-header h1 { font-size:1.85rem; font-weight:700; color:var(--primary); margin-bottom:.3rem; }
   .page-header p  { color:var(--text-muted); font-size:.9rem; }
-  /* Filter tabs */
   .filter-tabs { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1.75rem; }
   .filter-tab { padding:.45rem 1rem; border-radius:40px; border:1.5px solid var(--border); background:var(--white); font-size:.82rem; font-weight:500; color:var(--text-mid); cursor:pointer; transition:all .2s; }
   .filter-tab:hover { border-color:var(--primary); color:var(--primary); }
   .filter-tab.active { background:var(--primary); border-color:var(--primary); color:#fff; }
-  /* Order card */
   .order-card { background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); margin-bottom:1.25rem; overflow:hidden; transition:box-shadow .2s; }
   .order-card:hover { box-shadow:var(--shadow-md); }
   .order-card__header { padding:1rem 1.35rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem; }
@@ -136,21 +175,18 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
   .btn-sm-outline:hover { border-color:var(--primary); color:var(--primary); }
   .btn-sm-brand { padding:.4rem .9rem; border:1.5px solid var(--primary); border-radius:40px; font-size:.78rem; font-weight:600; color:#fff; background:var(--primary); cursor:pointer; transition:all .2s; text-decoration:none; display:inline-flex; align-items:center; gap:.3rem; }
   .btn-sm-brand:hover { background:var(--primary-light); color:#fff; }
-  /* Rating stars */
   .star-rating { display:flex; gap:.15rem; }
   .star-rating i { font-size:.8rem; }
-  /* Summary stats top */
   .hist-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:2rem; }
   .hist-stat { background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); padding:1.1rem 1.25rem; text-align:center; }
   .hist-stat__val { font-family:var(--font-display); font-size:1.6rem; font-weight:700; color:var(--primary); }
   .hist-stat__lbl { font-size:.75rem; color:var(--text-muted); margin-top:.15rem; }
-  /* Empty */
   .empty-history { text-align:center; padding:4rem 2rem; background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); }
   .empty-history span { font-size:3.5rem; display:block; margin-bottom:1rem; }
   /* Detail Modal */
   .detail-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9999; display:none; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
   .detail-modal-overlay.open { display:flex; }
-  .detail-modal-box { background:var(--white); border-radius:var(--radius-lg); width:100%; max-width:500px; max-height:90vh; overflow-y:auto; animation:fadeUp .3s ease; }
+  .detail-modal-box { background:var(--white); border-radius:var(--radius-lg); width:100%; max-width:520px; max-height:90vh; overflow-y:auto; animation:fadeUp .3s ease; }
   .detail-modal-header { padding:1.25rem 1.5rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
   .detail-modal-header h5 { font-size:1rem; font-weight:700; color:var(--primary); margin:0; }
   .detail-modal-body { padding:1.5rem; }
@@ -159,15 +195,25 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
   .detail-row:last-child { border-bottom:none; }
   .detail-row span:first-child { color:var(--text-muted); }
   .detail-row span:last-child { font-weight:600; color:var(--primary); }
-  .print-only-detail { display:none; }
+  /* Upload proof area */
+  .upload-proof-section { margin-top:1rem; }
+  .upload-area { border:2px dashed var(--border); border-radius:var(--radius-md); padding:1.5rem; text-align:center; cursor:pointer; transition:all .2s; background:var(--cream); }
+  .upload-area:hover { border-color:var(--primary); background:rgba(46,107,79,.05); }
+  .upload-area i { font-size:2rem; color:var(--text-muted); margin-bottom:.5rem; }
+  .upload-area p { font-size:.82rem; color:var(--text-mid); margin:0; }
+  .upload-area.has-file { border-color:var(--success); background:rgba(59,158,124,.05); }
+  .upload-area.has-file i { color:var(--success); }
+  .proof-preview { max-width:100%; border-radius:var(--radius-md); margin-top:.75rem; border:1px solid var(--border); }
+  .proof-image-thumb { width:80px; height:80px; object-fit:cover; border-radius:var(--radius-sm); border:1px solid var(--border); cursor:pointer; }
+  .payment-proof-display { margin-top:1rem; }
+  .payment-proof-display img { max-width:100%; border-radius:var(--radius-md); border:1px solid var(--border); cursor:pointer; transition:transform .2s; }
+  .payment-proof-display img:hover { transform:scale(1.02); }
   @media print {
-    .kny-navbar, .page-content > div:first-child, .hist-stats, .filter-tabs, .order-card__footer .order-actions, .detail-modal-header, .detail-modal-footer { display:none!important; }
+    .kny-navbar, .page-content > div:first-child, .hist-stats, .filter-tabs, .order-card__footer .order-actions, .detail-modal-header, .detail-modal-footer, .upload-proof-section { display:none!important; }
     .detail-modal-overlay { position:static; background:none; backdrop-filter:none; display:block!important; }
     .detail-modal-box { max-width:100%; box-shadow:none; border:none; }
-    .print-only-detail { display:block; text-align:center; margin-bottom:1.5rem; padding-bottom:1rem; border-bottom:1px dashed var(--border); }
   }
   @media(max-width:576px){ .hist-stats{grid-template-columns:1fr 1fr;} .hist-stat:last-child{grid-column:1/-1;} }
-  /* Highlight animation for notification click */
   .order-card.highlight { animation: highlightPulse 2s ease-out; border: 2px solid var(--primary); }
   @keyframes highlightPulse {
     0% { box-shadow: 0 0 0 0 rgba(46,107,79,0.4); }
@@ -203,6 +249,18 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
   <div class="highlight-banner">
     <i class="bi bi-bell-fill"></i>
     <span>Ada notifikasi baru! Scroll ke bawah untuk melihat pesanan yang diperbarui.</span>
+  </div>
+  <?php endif; ?>
+
+  <?php if ($uploadSuccess): ?>
+  <div style="background:#ecfaf4;border:1px solid #a3e0c8;color:var(--success);border-radius:var(--radius-md);padding:.85rem 1rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:.5rem;">
+    <i class="bi bi-check-circle-fill"></i> Bukti pembayaran berhasil diupload! Menunggu konfirmasi admin.
+  </div>
+  <?php endif; ?>
+
+  <?php if ($showOrderSuccess && $successOrderId): ?>
+  <div style="background:#ecfaf4;border:1px solid #a3e0c8;color:var(--success);border-radius:var(--radius-md);padding:.85rem 1rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:.5rem;">
+    <i class="bi bi-check-circle-fill"></i> Pesanan #<?= $successOrderId ?> berhasil dibuat! Menunggu pembayaran.
   </div>
   <?php endif; ?>
 
@@ -258,7 +316,7 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
         </div>
         <div style="display:flex;align-items:center;gap:.75rem;">
           <span style="font-size:.75rem;color:var(--text-muted);">
-            <i class="bi bi-credit-card"></i> <?= $order['payment'] ?>
+            <i class="bi bi-credit-card"></i> <?= strtoupper($order['payment']) ?>
           </span>
           <span class="k-badge <?= $statusBadge[$order['status']] ?>">
             <i class="bi <?= $statusIcon[$order['status']] ?>"></i>
@@ -268,7 +326,7 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
       </div>
 
       <div class="order-card__body">
-        <?php foreach ($order['items'] as $item): 
+        <?php foreach ($order['items'] as $item):
           $sugarLabel = $item['sugar_level'] === 'less' ? 'Less Sugar' : 'Normal';
           $iceLabel = $item['ice_level'] === 'less' ? 'Less Ice' : 'Normal';
         ?>
@@ -280,7 +338,7 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
             <div class="order-item__name"><?= htmlspecialchars($item['name']) ?></div>
             <div class="order-item__meta">x<?= $item['qty'] ?> &bull; <?= formatRupiah($item['price']) ?>/item</div>
             <div class="order-item__meta" style="font-size:.7rem;color:var(--text-muted);">
-              <i class="bi bi-droplet-half"></i> Gula: <?= $sugarLabel ?> 
+              <i class="bi bi-droplet-half"></i> Gula: <?= $sugarLabel ?>
               <span class="mx-2">•</span>
               <i class="bi bi-snow2"></i> Es: <?= $iceLabel ?>
             </div>
@@ -333,6 +391,18 @@ $totalSpent = array_sum(array_column(array_filter($orders, fn($o) => $o['status'
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>
 
+<!-- Image Preview Modal -->
+<div class="detail-modal-overlay" id="imagePreviewModal" style="z-index:10001;">
+  <div class="detail-modal-box" style="max-width:600px;max-height:90vh;background:#000;">
+    <div style="padding:1rem;display:flex;justify-content:flex-end;">
+      <button onclick="closeImagePreview()" style="background:none;border:none;color:#fff;font-size:1.5rem;cursor:pointer;">×</button>
+    </div>
+    <div style="padding:0 1rem 1.5rem;text-align:center;">
+      <img id="previewImage" src="" alt="Preview" style="max-width:100%;max-height:70vh;border-radius:var(--radius-md);">
+    </div>
+  </div>
+</div>
+
 <!-- Order Detail Modal -->
 <div class="detail-modal-overlay" id="orderDetailModal">
   <div class="detail-modal-box">
@@ -366,12 +436,56 @@ tabs.forEach(tab => {
     });
   });
 });
+
 // Scroll reveal
 const reveals = document.querySelectorAll('.animate-fadeup');
 const io = new IntersectionObserver(entries => {
   entries.forEach(e => { if(e.isIntersecting){ e.target.style.opacity='1'; e.target.style.transform='none'; io.unobserve(e.target); }});
 }, {threshold:0.08});
 reveals.forEach(el => { el.style.opacity='0'; el.style.transform='translateY(18px)'; el.style.transition='opacity .5s ease, transform .5s ease'; io.observe(el); });
+
+// Image preview
+function previewImage(src) {
+  document.getElementById('previewImage').src = src;
+  document.getElementById('imagePreviewModal').classList.add('open');
+}
+
+function closeImagePreview() {
+  document.getElementById('imagePreviewModal').classList.remove('open');
+}
+
+// Handle file upload
+function handleFileSelect(input, orderId) {
+  const uploadArea = document.getElementById('uploadArea-' + orderId);
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    if (!validTypes.includes(file.type)) {
+      alert('Format file tidak valid. Gunakan JPG atau PNG.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Ukuran file terlalu besar. Maksimal 2MB.');
+      return;
+    }
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      uploadArea.innerHTML = '<i class="bi bi-check-circle" style="color:var(--success);"></i><p style="color:var(--success);font-weight:600;">' + file.name + '</p><span>Klik untuk ganti file</span>';
+      uploadArea.classList.add('has-file');
+
+      // Show hidden file input and form
+      const hiddenInput = document.createElement('input');
+      hiddenInput.type = 'file';
+      hiddenInput.name = 'payment_proof';
+      hiddenInput.accept = 'image/*';
+      hiddenInput.onchange = function() { handleFileSelect(this, orderId); };
+      uploadArea.appendChild(hiddenInput);
+    };
+    reader.readAsDataURL(file);
+  }
+}
 
 // Order Detail Modal Functions
 function showOrderDetail(order) {
@@ -434,6 +548,43 @@ function showOrderDetail(order) {
     '</div>';
   }
 
+  // Payment proof section
+  let paymentProofHtml = '';
+  const proofUrl = '../assets/uploads/payment_proofs/' + order.payment_proof;
+
+  if (order.payment_proof) {
+    paymentProofHtml = '<div style="background:#ecfaf4;border-radius:var(--radius-md);padding:1rem;margin-top:1rem;border:1px solid #a3e0c8;">' +
+      '<div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--success);margin-bottom:.6rem;">' +
+        '<i class="bi bi-check-circle me-1"></i>Bukti Pembayaran</div>' +
+      '<img src="' + proofUrl + '" alt="Bukti Pembayaran" style="width:100%;max-width:200px;border-radius:var(--radius-sm);border:1px solid var(--border);cursor:pointer;" onclick="previewImage(\'' + proofUrl + '\')">' +
+      '</div>';
+  } else if (order.payment !== 'cod' && (order.status === 'Menunggu' || order.status === 'Diproses')) {
+    // Show upload form for non-COD orders that haven't uploaded proof
+    paymentProofHtml = '<div style="margin-top:1rem;">' +
+      '<form method="POST" enctype="multipart/form-data" id="uploadProofForm-' + order.order_id + '">' +
+        '<input type="hidden" name="action" value="upload_payment_proof">' +
+        '<input type="hidden" name="order_id" value="' + order.order_id + '">' +
+        '<div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:.6rem;">' +
+          '<i class="bi bi-cloud-upload me-1"></i>Upload Bukti Pembayaran</div>' +
+        '<div class="upload-area" id="uploadArea-' + order.order_id + '" onclick="this.querySelector(\'input[type=file]\').click()">' +
+          '<i class="bi bi-image"></i>' +
+          '<p>Klik untuk pilih foto</p>' +
+          '<span>JPG/PNG, Maks 2MB</span>' +
+          '<input type="file" name="payment_proof" accept="image/*" style="display:none;" onchange="handleFileSelect(this, ' + order.order_id + ')">' +
+        '</div>' +
+        '<button type="submit" class="btn-brand" style="width:100%;margin-top:.75rem;font-size:.85rem;">' +
+          '<i class="bi bi-upload me-1"></i>Kirim Bukti Pembayaran' +
+        '</button>' +
+      '</form>' +
+    '</div>';
+  } else if (order.payment === 'cod') {
+    paymentProofHtml = '<div style="background:#fff8ec;border-radius:var(--radius-md);padding:1rem;margin-top:1rem;border:1px solid #f0cb7a;text-align:center;">' +
+      '<i class="bi bi-cash" style="font-size:1.5rem;color:var(--accent);"></i>' +
+      '<p style="font-size:.82rem;color:var(--accent);font-weight:600;margin:.5rem 0 0 0;">Pembayaran di Tempat (COD)</p>' +
+      '<p style="font-size:.75rem;color:var(--text-muted);margin:.25rem 0 0 0;">Bayar saat pesanan tiba</p>' +
+    '</div>';
+  }
+
   document.getElementById('detailModalBody').innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">' +
       '<span class="k-badge ' + (order.status === 'Selesai' ? 'k-badge-green' : (order.status === 'Dibatalkan' ? 'k-badge-red' : (order.status === 'Menunggu' ? 'k-badge-gray' : 'k-badge-accent'))) + '">' +
@@ -468,11 +619,8 @@ function showOrderDetail(order) {
         '</div>' +
       '</div>' +
     '</div>' +
-    cancellationNoteHtml +
-    '<div class="print-only-detail" style="text-align:center;margin-top:2rem;padding-top:1rem;border-top:1px dashed var(--border);">' +
-      '<p style="font-size:.85rem;color:var(--text-muted);margin:0;">Terima kasih sudah memesan di Konnyusu!</p>' +
-      '<p style="font-size:.75rem;color:var(--text-muted);margin:.25rem 0 0 0;">— Semoga harimu menyenangkan —</p>' +
-    '</div>';
+    paymentProofHtml +
+    cancellationNoteHtml;
 
   document.getElementById('orderDetailModal').classList.add('open');
 }
@@ -483,6 +631,10 @@ function closeDetailModal() {
 
 document.getElementById('orderDetailModal').addEventListener('click', function(e) {
   if (e.target === this) closeDetailModal();
+});
+
+document.getElementById('imagePreviewModal').addEventListener('click', function(e) {
+  if (e.target === this) closeImagePreview();
 });
 
 // Scroll to highlighted order from notification click
