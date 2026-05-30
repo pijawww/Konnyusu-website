@@ -1,4 +1,4 @@
-<?php
+`<?php
 // auth/register.php
 session_start();
 require_once __DIR__ . '/../config/auth.php';
@@ -273,18 +273,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       font-weight: 500;
     }
 
-    /* Password toggle */
-    .password-input-wrapper {
+    /* Password requirements outside input */
+    .password-requirements {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      background: #f8f9fa;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+    .password-requirements small {
+      font-weight: 600;
+      color: var(--text-mid);
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    .password-rules-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.35rem;
+    }
+    .password-rules-list li {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: color 0.2s;
+    }
+    .password-rules-list li i {
+      font-size: 0.6rem;
+      transition: color 0.2s;
+    }
+    .password-rules-list li.valid {
+      color: var(--success);
+    }
+    .password-rules-list li.valid i {
+      color: var(--success);
+    }
+    .password-rules-list li.valid i:before {
+      content: "\f26e";
+    }
+
+    /* Password input with icon - same style as other inputs */
+    .input-with-icon {
       position: relative;
       display: flex;
       align-items: center;
     }
-    .password-input-wrapper input {
-      width: 100%;
+    .input-with-icon .form-input {
+      padding-right: 2.5rem;
     }
-    .password-toggle {
+    .input-with-icon .password-toggle {
       position: absolute;
-      right: 1rem;
+      right: 0.75rem;
       background: none;
       border: none;
       color: var(--text-muted);
@@ -296,7 +340,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       font-size: 1rem;
       transition: color 0.2s;
     }
-    .password-toggle:hover {
+    .input-with-icon .password-toggle:hover {
       color: var(--text-dark);
     }
 
@@ -405,14 +449,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="form-group">
           <label class="form-label">Kata Sandi</label>
-          <div class="password-input-wrapper" style="background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 0 1rem;">
+          <div class="input-with-icon">
             <input type="password" name="password" id="pwdInput" class="form-input"
-                   placeholder="Minimal 8 karakter, gunakan huruf besar, huruf kecil, angka, dan simbol"
-                   required oninput="checkStrength(this.value)"
-                   style="border: none; background: transparent; padding: .75rem 0; flex: 1;">
+                   placeholder="Masukkan kata sandi"
+                   required oninput="checkStrength(this.value)">
             <button type="button" class="password-toggle" onclick="togglePassword('pwdInput')">
               <i class="bi bi-eye"></i>
             </button>
+          </div>
+          <!-- Password Requirements -->
+          <div class="password-requirements">
+            <small class="text-muted">Syarat kata sandi:</small>
+            <ul class="password-rules-list">
+              <li id="rule-length"><i class="bi bi-circle"></i> Minimal 8 karakter</li>
+              <li id="rule-upper"><i class="bi bi-circle"></i> Mengandung huruf besar (A-Z)</li>
+              <li id="rule-lower"><i class="bi bi-circle"></i> Mengandung huruf kecil (a-z)</li>
+              <li id="rule-number"><i class="bi bi-circle"></i> Mengandung angka (0-9)</li>
+              <li id="rule-symbol"><i class="bi bi-circle"></i> Mengandung simbol (!@#$%^&*)</li>
+            </ul>
           </div>
           <div class="strength-bar">
             <div class="strength-bar__fill" id="strengthBar"></div>
@@ -421,10 +475,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="form-group">
           <label class="form-label">Konfirmasi Kata Sandi</label>
-          <div class="password-input-wrapper" style="background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 0 1rem;">
+          <div class="input-with-icon">
             <input type="password" name="confirm_password" id="confirmPwdInput" class="form-input"
-                   placeholder="Ulangi kata sandi" required
-                   style="border: none; background: transparent; padding: .75rem 0; flex: 1;">
+                   placeholder="Ulangi kata sandi" required>
             <button type="button" class="password-toggle" onclick="togglePassword('confirmPwdInput')">
               <i class="bi bi-eye"></i>
             </button>
@@ -457,12 +510,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     const bar = document.getElementById('strengthBar');
     const lbl = document.getElementById('strengthLabel');
     let score = 0;
-    if (val.length >= 8) score++;
-    if (val.length >= 12) score++;
-    if (/[A-Z]/.test(val)) score++;
-    if (/[a-z]/.test(val)) score++;
-    if (/[0-9]/.test(val)) score++;
-    if (/[^A-Za-z0-9]/.test(val)) score++;
+
+    // Check each rule and update visual feedback
+    const ruleLength = document.getElementById('rule-length');
+    const ruleUpper = document.getElementById('rule-upper');
+    const ruleLower = document.getElementById('rule-lower');
+    const ruleNumber = document.getElementById('rule-number');
+    const ruleSymbol = document.getElementById('rule-symbol');
+
+    if (val.length >= 8) {
+      ruleLength.classList.add('valid');
+      score++;
+    } else {
+      ruleLength.classList.remove('valid');
+    }
+
+    if (/[A-Z]/.test(val)) {
+      ruleUpper.classList.add('valid');
+      score++;
+    } else {
+      ruleUpper.classList.remove('valid');
+    }
+
+    if (/[a-z]/.test(val)) {
+      ruleLower.classList.add('valid');
+      score++;
+    } else {
+      ruleLower.classList.remove('valid');
+    }
+
+    if (/[0-9]/.test(val)) {
+      ruleNumber.classList.add('valid');
+      score++;
+    } else {
+      ruleNumber.classList.remove('valid');
+    }
+
+    if (/[^A-Za-z0-9]/.test(val)) {
+      ruleSymbol.classList.add('valid');
+      score++;
+    } else {
+      ruleSymbol.classList.remove('valid');
+    }
 
     const levels = [
       { pct: '20%', color: '#e05252', label: 'Sangat lemah' },

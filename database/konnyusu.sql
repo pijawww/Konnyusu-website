@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: May 30, 2026 at 09:47 AM
+-- Generation Time: May 30, 2026 at 11:02 AM
 -- Server version: 8.0.30
 -- PHP Version: 8.1.10
 
@@ -40,7 +40,8 @@ CREATE TABLE `cart` (
 --
 
 INSERT INTO `cart` (`cart_id`, `user_id`, `date`, `status`, `created_at`) VALUES
-(1, 100, '2026-05-30 09:47:13', 'active', '2026-05-30 09:47:13');
+(1, 100, '2026-05-30 09:47:13', 'active', '2026-05-30 09:47:13'),
+(2, 1, '2026-05-30 10:12:48', 'active', '2026-05-30 10:12:48');
 
 -- --------------------------------------------------------
 
@@ -88,11 +89,11 @@ CREATE TABLE `menu` (
 
 INSERT INTO `menu` (`menu_id`, `name`, `description`, `price`, `category`, `image`, `stock`, `is_new`, `is_best`, `sold`, `created_at`, `updated_at`) VALUES
 (1, 'Ice Aren Latte', 'Es kopi susu dengan gula aren dan kopi espresso premium', 11000, 'coffee', 'prod_6a0efb7f134ce.jpeg', 50, 0, 1, 9, '2026-05-21 12:33:03', '2026-05-30 07:14:54'),
-(2, 'Ice Shaken Caramel Latte', 'Es Kopi Susu dengan Gula Aren, Krimer dan Kopi Espresso Premium dan Topping Whippe Cream dan Saus Caramel Premium', 19000, 'coffee', 'prod_6a0efbc5c3c3c.jpeg', 50, 0, 1, 4, '2026-05-21 12:34:13', '2026-05-30 08:15:28'),
+(2, 'Ice Shaken Caramel Latte', 'Es Kopi Susu dengan Gula Aren, Krimer dan Kopi Espresso Premium dan Topping Whippe Cream dan Saus Caramel Premium', 19000, 'coffee', 'prod_6a0efbc5c3c3c.jpeg', 50, 0, 1, 7, '2026-05-21 12:34:13', '2026-05-30 10:41:57'),
 (3, 'Ice Cappucinno', 'Es Kopi Susu dengan Kopi Espresso Premium', 13000, 'coffee', 'prod_6a0efc0ebdfd9.jpeg', 30, 0, 0, 3, '2026-05-21 12:35:26', '2026-05-29 04:12:27'),
 (4, 'Ice Butter Aren Latte', 'Es kopi susu dengan gula aren dan topping biscuit crumble dan kopi espresso premium', 19000, 'coffee', 'prod_6a0efc5c2df8f.jpeg', 20, 1, 0, 0, '2026-05-21 12:36:44', '2026-05-21 12:36:44'),
 (5, 'Nyusu Oreo', 'Susu dengan campuran dna topping oreo memiliki rasa yang pas', 12000, 'non-coffee', 'prod_6a0efce2694de.jpeg', 100, 0, 1, 0, '2026-05-21 12:38:58', '2026-05-21 12:38:58'),
-(6, 'Nyusu Regal', 'Susu sapi segar dengan campuran Mari Regal yang khas', 12000, 'non-coffee', 'prod_6a0efd355fc96.jpeg', 18, 0, 0, 1, '2026-05-21 12:40:21', '2026-05-30 07:14:54'),
+(6, 'Nyusu Regal', 'Susu sapi segar dengan campuran Mari Regal yang khas', 12000, 'non-coffee', 'prod_6a0efd355fc96.jpeg', 18, 0, 0, 3, '2026-05-21 12:40:21', '2026-05-30 10:41:57'),
 (7, 'Nyusu Pisang', 'Susu sapi segar dengan campuran buah pisang yang segar', 12000, 'non-coffee', 'prod_6a0efd75392aa.jpeg', 25, 0, 0, 5, '2026-05-21 12:41:25', '2026-05-30 07:14:54'),
 (8, 'Nyusu Kurma', 'Susu sapi dengan campuran buah kurma yang manis', 12000, 'non-coffee', 'prod_6a0efdbb720bb.jpeg', 30, 0, 0, 2, '2026-05-21 12:42:35', '2026-05-29 05:13:28'),
 (9, 'Nyusu Matcha', 'Susu sapi dengan matcha pilihan', 12000, 'non-coffee', 'prod_6a0efe0c72bd1.jpeg', 28, 0, 1, 0, '2026-05-21 12:43:56', '2026-05-21 12:43:56'),
@@ -257,13 +258,13 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `cart`
 --
 ALTER TABLE `cart`
-  MODIFY `cart_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `cart_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `cart_item`
 --
 ALTER TABLE `cart_item`
-  MODIFY `cart_item_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `cart_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `menu`
