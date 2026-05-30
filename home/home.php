@@ -740,6 +740,24 @@ $bestSellers = array_filter($products, fn($p) => $p['is_best']);
   </div>
 </div>
 
+<!-- Admin Warning Modal -->
+<div class="modal fade" id="adminWarningModal" tabindex="-1" aria-hidden="true" style="z-index:1060;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:20px;overflow:hidden;border:none;">
+      <div class="modal-body p-4 text-center">
+        <div style="width:70px;height:70px;background:#eff6ff;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;"><i class="bi bi-shield-lock-fill" style="font-size:2rem;color:#3b82f6;"></i></div>
+        <h5 style="font-family:var(--font-display);font-weight:800;color:var(--primary);margin-bottom:.5rem;">Akses Pembelian Ditutup</h5>
+        <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.5rem;">Akun admin hanya digunakan untuk mengelola toko. Untuk melakukan pembelian, silakan gunakan akun pelanggan.</p>
+        <div class="d-flex gap-2 justify-content-center">
+          <a href="../admin/dashboard/dashboard.php" class="btn-brand" style="text-decoration:none;padding:.6rem 1.2rem;">Ke Dashboard</a>
+          <button type="button" class="btn-outline-brand" data-bs-dismiss="modal" style="padding:.6rem 1.2rem;">Tutup</button>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="position:absolute;top:1rem;right:1rem;"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Product Modal -->
 <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -992,13 +1010,22 @@ function showToast(message) {
 }
 
 const isLoggedIn = <?= !empty($currentUser) ? 'true' : 'false' ?>;
+const isAdmin = <?= !empty($currentUser) && ($currentUser['role'] ?? '') === 'admin' ? 'true' : 'false' ?>;
 const loginWarningModal = new bootstrap.Modal('#loginWarningModal');
+const adminWarningModal = new bootstrap.Modal('#adminWarningModal');
 
 document.getElementById('btnAddToCart').addEventListener('click', () => {
   if (!isLoggedIn) {
     productModal.hide();
     setTimeout(() => {
       loginWarningModal.show();
+    }, 150);
+    return;
+  }
+  if (isAdmin) {
+    productModal.hide();
+    setTimeout(() => {
+      adminWarningModal.show();
     }, 150);
     return;
   }
@@ -1010,6 +1037,13 @@ document.getElementById('btnBuyNow').addEventListener('click', () => {
     productModal.hide();
     setTimeout(() => {
       loginWarningModal.show();
+    }, 150);
+    return;
+  }
+  if (isAdmin) {
+    productModal.hide();
+    setTimeout(() => {
+      adminWarningModal.show();
     }, 150);
     return;
   }

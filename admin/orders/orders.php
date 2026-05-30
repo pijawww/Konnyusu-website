@@ -374,13 +374,13 @@ function getStatusIcon(string $status): string {
 </div>
 
 <!-- Image Preview Modal -->
-<div class="modal-overlay" id="imagePreviewModal">
-  <div class="modal-box" style="max-width:600px;max-height:90vh;background:#000;">
-    <div style="padding:1rem;display:flex;justify-content:flex-end;">
-      <button onclick="closeImagePreview()" style="background:none;border:none;color:#fff;font-size:1.5rem;cursor:pointer;">×</button>
+<div class="modal-overlay" id="imagePreviewModal" style="z-index:10001; background:rgba(0,0,0,0.95); padding:1rem;">
+  <div style="max-width:100%; max-height:100%; display:flex; flex-direction:column; align-items:center;">
+    <div style="width:100%; display:flex; justify-content:flex-end; padding:0.5rem 0;">
+      <button onclick="closeImagePreview()" style="background:none; border:none; color:#fff; font-size:2rem; cursor:pointer; padding:0 1rem;">×</button>
     </div>
-    <div style="padding:0 1rem 1.5rem;text-align:center;">
-      <img id="previewImage" src="" alt="Preview" style="max-width:100%;max-height:70vh;border-radius:var(--radius-md);">
+    <div style="flex:1; display:flex; align-items:center; justify-content:center; width:100%;">
+      <img id="previewImage" src="" alt="Preview" style="max-width:100%; max-height:85vh; width:auto; height:auto; object-fit:contain; border-radius:8px;">
     </div>
   </div>
 </div>
@@ -526,9 +526,10 @@ function showDetail(o){
       '<div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--success);margin-bottom:.6rem;">' +
         '<i class="bi bi-paperclip me-1"></i>Bukti Pembayaran' +
       '</div>' +
-      '<img src="' + proofUrl + '" alt="Bukti Pembayaran" class="payment-proof-thumb" onclick="previewImage(this.src)" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
+      '<img src="' + proofUrl + '" alt="Bukti Pembayaran" style="width:100%;border-radius:var(--radius-md);border:1px solid var(--border);cursor:pointer;transition:transform .2s;" onclick="previewImage(this.src)" onmouseover="this.style.transform=\'scale(1.01)\'" onmouseout="this.style.transform=\'scale(1)\'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">' +
       '<div style="display:none;font-size:.78rem;color:var(--text-muted);padding:.5rem;">Gambar tidak ditemukan</div>' +
-      '<p style="font-size:.72rem;color:var(--success);margin:.5rem 0 0 0;"><i class="bi bi-check-circle"></i> Bukti pembayaran sudah diupload oleh pelanggan</p>' +
+      '<p style="font-size:.72rem;color:var(--success);margin:.75rem 0 0 0;"><i class="bi bi-check-circle"></i> Bukti pembayaran sudah diupload oleh pelanggan</p>' +
+      '<p style="font-size:.72rem;color:var(--text-muted);margin:.25rem 0 0 0;"><i class="bi bi-info-circle"></i> Klik gambar untuk melihat ukuran penuh</p>' +
     '</div>';
   } else if (o.payment_method !== 'cod' && o.payment_method !== 'cash') {
     paymentProofHtml = '<div class="payment-proof-section empty">' +

@@ -1,7 +1,13 @@
 <?php
 // cart/update-cart.php
 session_start();
+require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/cart.php';
+
+if (!isLoggedIn() || isAdmin()) {
+    http_response_code(403);
+    exit;
+}
 
 // Handle POST request (update quantity, ice_level, sugar_level)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {

@@ -137,12 +137,14 @@ $currentDir  = basename(dirname($_SERVER['PHP_SELF']));
           </ul>
         </div>
       <?php endif; ?>
+      <?php if (!$currentUser || $currentUser['role'] !== 'admin'): ?>
       <a href="<?= $currentUser ? '../cart/cart.php' : '../auth/login.php' ?>" class="kny-navbar__cart" title="Keranjang">
         <i class="bi bi-bag"></i>
         <?php if ($currentUser && $cartTotalItems > 0): ?>
           <span class="kny-navbar__cart-badge"><?= $cartTotalItems ?></span>
         <?php endif; ?>
       </a>
+      <?php endif; ?>
       <?php if ($currentUser): ?>
         <div class="dropdown">
           <button class="btn btn-outline-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">

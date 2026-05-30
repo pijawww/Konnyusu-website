@@ -9,6 +9,11 @@ include __DIR__ . '/../data/products.php';
 
 requireLogin();
 
+if (isAdmin()) {
+    header('Location: ../admin/dashboard/dashboard.php');
+    exit;
+}
+
 $isBuyNow = isset($_SESSION['buy_now_cart']) && !empty($_SESSION['buy_now_cart']);
 $allCartItems = getCartItems();
 $selectedItemsIds = [];
@@ -79,16 +84,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $orderId = createOrder($currentUser['user_id'], $orderItems, $orderType, $notes, $paymentMethod, $recipientData);
 
     if ($orderId) {
-        if ($paymentMethod !== 'cod' && isset($_FILES['payment_proof']) && $_FILES['payment_proof']['error'] === UPLOAD_ERR_OK) {
-            $uploadDir = __DIR__ . '/../assets/uploads/payment_proofs/';
-            if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
-            $file = $_FILES['payment_proof'];
-            if (in_array($file['type'], ['image/jpeg', 'image/png', 'image/jpg']) && $file['size'] <= 5 * 1024 * 1024) {
-                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-                $newFileName = 'proof_' . $orderId . '_' . time() . '.' . $ext;
-                if (move_uploaded_file($file['tmp_name'], $uploadDir . $newFileName)) {
-                    $pdo->prepare("UPDATE payment SET payment_proof = ?, payment_date = NOW() WHERE order_id = ?")->execute([$newFileName, $orderId]);
+        $paymentProofUploaded = false;
+        if ($paymentMethod !== 'cod') {
+            // Debug: cek $_FILES
+            error_log("Checkout debug: paymentMethod = $paymentMethod");
+            error_log("Checkout debug: FILES = " . print_r($_FILES, true));
+            
+            if (isset($_FILES['payment_proof']) && $_FILES['payment_proof']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = __DIR__ . '/../assets/uploads/payment_proofs/';
+                if (!file_exists($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
                 }
+                $file = $_FILES['payment_proof'];
+                $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+                error_log("Checkout debug: file type = " . $file['type'] . ", size = " . $file['size']);
+                
+                if (in_array($file['type'], $allowedTypes) && $file['size'] <= 5 * 1024 * 1024) {
+                    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                    if (empty($ext)) {
+                        // Fallback to get extension from mime type
+                        $mimeExtMap = ['image/jpeg' => 'jpg', 'image/png' => 'png'];
+                        $ext = $mimeExtMap[$file['type']] ?? 'jpg';
+                    }
+                    $newFileName = 'proof_' . $orderId . '_' . time() . '.' . $ext;
+                    $targetPath = $uploadDir . $newFileName;
+                    error_log("Checkout debug: targetPath = $targetPath");
+                    
+                    if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+                        // Berhasil memindahkan file, sekarang update database
+                        error_log("Checkout debug: File moved successfully!");
+                        $stmt = $pdo->prepare("UPDATE payment SET payment_proof = ?, payment_date = NOW() WHERE order_id = ?");
+                        $result = $stmt->execute([$newFileName, $orderId]);
+                        error_log("Checkout debug: UPDATE payment result = " . ($result ? 'OK' : 'FAIL'));
+                        $paymentProofUploaded = true;
+                    } else {
+                        error_log("Checkout debug: Failed to move uploaded file!");
+                    }
+                } else {
+                    error_log("Checkout debug: Invalid file type or size!");
+                }
+            } else {
+                error_log("Checkout debug: No file uploaded or upload error! Error code: " . ($_FILES['payment_proof']['error'] ?? 'no FILES'));
             }
         }
 
@@ -249,7 +285,7 @@ unset($_SESSION['checkout_error']);
       <div class="step"><div class="step-circle pending">3</div><span class="step-label">Selesai</span></div>
     </div>
 
-    <form method="POST" id="checkoutForm">
+    <form method="POST" enctype="multipart/form-data" id="checkoutForm">
       <input type="hidden" name="action" value="process_payment">
       <input type="hidden" name="selected_items" value="<?= isset($_POST['selected_items']) ? htmlspecialchars($_POST['selected_items']) : '' ?>">
 
@@ -538,7 +574,7 @@ function buildModalContent(method, total) {
     html += '<i class="bi bi-image" style="font-size:1.75rem;color:var(--text-muted);margin-bottom:.4rem;display:block;"></i>';
     html += '<p style="margin:0;">Klik untuk pilih foto</p>';
     html += '<span style="font-size:.72rem;color:var(--text-muted);">JPG/PNG, Maks 5MB</span>';
-    html += '<input type="file" id="proofFile" name="payment_proof" accept="image/jpeg,image/png" style="display:none;" onchange="handleFile(this)">';
+    html += '<input type="file" id="proofFile" name="payment_proof" form="checkoutForm" accept="image/jpeg,image/png" style="display:none;" onchange="handleFile(this)">';
     html += '</div></div>';
   }
 
@@ -552,27 +588,54 @@ function handleFile(input) {
     // Validasi: hanya JPG/PNG, maks 5MB
     const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
     const maxSize = 5 * 1024 * 1024; // 5MB
-    if (!allowedTypes.includes(f.type)) { alert('Format harus JPG/PNG'); input.value=''; return; }
-    if (f.size > maxSize) { alert('Maksimal ukuran file 5MB'); input.value=''; return; }
+    if (!allowedTypes.includes(f.type)) { 
+      alert('Format harus JPG/PNG'); 
+      input.value=''; 
+      return; 
+    }
+    if (f.size > maxSize) { 
+      alert('Maksimal ukuran file 5MB'); 
+      input.value=''; 
+      return; 
+    }
 
-    // Tampilkan preview gambar - GANTI SEMUA ISI AREA
+    // Tampilkan preview gambar tanpa mengganti input asli
     const reader = new FileReader();
     reader.onload = function(e) {
       area.classList.add('has-file');
-      // Simpan ID dan name input sebelum replace
-      const inputId = input.id;
-      const inputName = input.name;
-      // Rebuild area dengan preview
-      area.innerHTML = '<div style="text-align:center;cursor:pointer;">' +
-        '<img src="' + e.target.result + '" style="max-width:100%;max-height:120px;object-fit:contain;border-radius:8px;margin-bottom:.4rem;">' +
-        '<p style="color:var(--success);font-weight:600;margin:0 0 .2rem 0;">' + f.name + '</p>' +
-        '<span style="font-size:.72rem;color:var(--text-muted);">Klik untuk ganti</span>' +
-        '</div>' +
-        '<input type="file" id="' + inputId + '" name="' + inputName + '" accept="image/jpeg,image/png" style="display:none;" onchange="handleFile(this)">';
-      // Set file ke input baru menggunakan DataTransfer
-      const dt = new DataTransfer();
-      dt.items.add(f);
-      document.getElementById(inputId).files = dt.files;
+      // Update area dengan preview, tapi simpan input asli!
+      area.innerHTML = '';
+      
+      // Buat wrapper untuk preview
+      const previewWrapper = document.createElement('div');
+      previewWrapper.style.textAlign = 'center';
+      previewWrapper.style.cursor = 'pointer';
+      previewWrapper.onclick = function() { input.click(); };
+      
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      img.style.maxWidth = '100%';
+      img.style.maxHeight = '120px';
+      img.style.objectFit = 'contain';
+      img.style.borderRadius = '8px';
+      img.style.marginBottom = '.4rem';
+      
+      const fileName = document.createElement('p');
+      fileName.style.color = 'var(--success)';
+      fileName.style.fontWeight = '600';
+      fileName.style.margin = '0 0 .2rem 0';
+      fileName.textContent = f.name;
+      
+      const hint = document.createElement('span');
+      hint.style.fontSize = '.72rem';
+      hint.style.color = 'var(--text-muted)';
+      hint.textContent = 'Klik untuk ganti';
+      
+      previewWrapper.appendChild(img);
+      previewWrapper.appendChild(fileName);
+      previewWrapper.appendChild(hint);
+      area.appendChild(previewWrapper);
+      area.appendChild(input); // Masukkan input asli kembali ke area
     };
     reader.readAsDataURL(f);
   }

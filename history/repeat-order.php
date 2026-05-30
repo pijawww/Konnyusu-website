@@ -8,6 +8,11 @@ require_once __DIR__ . '/../data/products.php';
 
 requireLogin();
 
+if (isAdmin()) {
+    header('Location: ../admin/dashboard/dashboard.php');
+    exit;
+}
+
 if (!isset($_GET['order_id'])) {
     header('Location: history.php');
     exit;

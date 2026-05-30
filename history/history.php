@@ -12,6 +12,32 @@ requireLogin();
 $cartTotalItems = getCartCount();
 
 $currentUser = getCurrentUser();
+$uploadSuccess = false;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'upload_payment_proof') {
+    $orderIdForUpload = (int)($_POST['order_id'] ?? 0);
+    if ($orderIdForUpload > 0 && isset($_FILES['payment_proof']) && $_FILES['payment_proof']['error'] === UPLOAD_ERR_OK) {
+        $uploadDir = __DIR__ . '/../assets/uploads/payment_proofs/';
+        if (!file_exists($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $file = $_FILES['payment_proof'];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        if (in_array($file['type'], $allowedTypes) && $file['size'] <= 2 * 1024 * 1024) {
+            $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $newFileName = 'proof_' . $orderIdForUpload . '_' . time() . '.' . $ext;
+            $targetPath = $uploadDir . $newFileName;
+
+            if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+                global $pdo;
+                $stmt = $pdo->prepare("UPDATE payment SET payment_proof = ?, payment_date = NOW() WHERE order_id = ?");
+                $stmt->execute([$newFileName, $orderIdForUpload]);
+                $uploadSuccess = true;
+            }
+        }
+    }
+}
+
 $ordersData = getUserOrders($currentUser['user_id']);
 
 // Handle highlight parameter for notification clicks
@@ -106,34 +132,6 @@ $successOrderId = isset($_SESSION['order_id']) ? $_SESSION['order_id'] : null;
 if ($showOrderSuccess) {
     unset($_SESSION['order_success']);
     unset($_SESSION['order_id']);
-}
-
-// Handle upload bukti pembayaran
-$uploadSuccess = false;
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'upload_payment_proof') {
-    $orderIdForUpload = (int)($_POST['order_id'] ?? 0);
-    if ($orderIdForUpload > 0 && isset($_FILES['payment_proof']) && $_FILES['payment_proof']['error'] === UPLOAD_ERR_OK) {
-        $uploadDir = __DIR__ . '/../assets/uploads/payment_proofs/';
-        if (!file_exists($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
-        }
-
-        $file = $_FILES['payment_proof'];
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-        if (in_array($file['type'], $allowedTypes) && $file['size'] <= 2 * 1024 * 1024) {
-            $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $newFileName = 'proof_' . $orderIdForUpload . '_' . time() . '.' . $ext;
-            $targetPath = $uploadDir . $newFileName;
-
-            if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-                // Update database
-                global $pdo;
-                $stmt = $pdo->prepare("UPDATE payment SET payment_proof = ?, payment_date = NOW() WHERE order_id = ?");
-                $stmt->execute([$newFileName, $orderIdForUpload]);
-                $uploadSuccess = true;
-            }
-        }
-    }
 }
 
 ?>
@@ -309,7 +307,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
       <div class="order-card__header">
         <div>
-          <span class="order-card__id"><?= $order['id'] ?></span>
+          <span style="font-family:monospace;font-weight:700;color:var(--primary);"><?= $order['id'] ?></span>
+              <?php if(!empty($order['payment_proof'])): ?>
+              <span class="k-badge k-badge-green" style="font-size:.65rem;margin-left:.35rem;" title="Bukti pembayaran sudah diupload">
+                <i class="bi bi-paperclip"></i>
+              </span>
+              <?php endif; ?>
           <div class="order-card__date">
             <i class="bi bi-calendar3"></i> <?= $order['date'] ?>
           </div>
@@ -376,7 +379,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             <i class="bi bi-check-circle"></i> Pesanan Diterima
           </a>
           <?php endif; ?>
-          <button class="btn-sm-outline" onclick="showOrderDetail(<?= htmlspecialchars(json_encode($order)) ?>)"><i class="bi bi-receipt"></i> Detail</button>
+          <button class="btn-sm-outline" onclick='showOrderDetail(<?= json_encode($order, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'><i class="bi bi-receipt"></i> Detail</button>
           <a href="repeat-order.php?order_id=<?= $order['order_id'] ?>"
              class="btn-sm-brand"><i class="bi bi-arrow-clockwise"></i> Pesan Lagi</a>
         </div>
@@ -392,13 +395,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 <?php include __DIR__ . '/../layouts/footer.php'; ?>
 
 <!-- Image Preview Modal -->
-<div class="detail-modal-overlay" id="imagePreviewModal" style="z-index:10001;">
-  <div class="detail-modal-box" style="max-width:600px;max-height:90vh;background:#000;">
-    <div style="padding:1rem;display:flex;justify-content:flex-end;">
-      <button onclick="closeImagePreview()" style="background:none;border:none;color:#fff;font-size:1.5rem;cursor:pointer;">×</button>
+<div class="detail-modal-overlay" id="imagePreviewModal" style="z-index:10001; background:rgba(0,0,0,0.95); padding:1rem;">
+  <div style="max-width:100%; max-height:100%; display:flex; flex-direction:column; align-items:center;">
+    <div style="width:100%; display:flex; justify-content:flex-end; padding:0.5rem 0;">
+      <button onclick="closeImagePreview()" style="background:none; border:none; color:#fff; font-size:2rem; cursor:pointer; padding:0 1rem;">×</button>
     </div>
-    <div style="padding:0 1rem 1.5rem;text-align:center;">
-      <img id="previewImage" src="" alt="Preview" style="max-width:100%;max-height:70vh;border-radius:var(--radius-md);">
+    <div style="flex:1; display:flex; align-items:center; justify-content:center; width:100%;">
+      <img id="previewImage" src="" alt="Preview" style="max-width:100%; max-height:85vh; width:auto; height:auto; object-fit:contain; border-radius:8px;">
     </div>
   </div>
 </div>
@@ -556,7 +559,8 @@ function showOrderDetail(order) {
     paymentProofHtml = '<div style="background:#ecfaf4;border-radius:var(--radius-md);padding:1rem;margin-top:1rem;border:1px solid #a3e0c8;">' +
       '<div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--success);margin-bottom:.6rem;">' +
         '<i class="bi bi-check-circle me-1"></i>Bukti Pembayaran</div>' +
-      '<img src="' + proofUrl + '" alt="Bukti Pembayaran" style="width:100%;max-width:200px;border-radius:var(--radius-sm);border:1px solid var(--border);cursor:pointer;" onclick="previewImage(\'' + proofUrl + '\')">' +
+      '<img src="' + proofUrl + '" alt="Bukti Pembayaran" style="width:100%;border-radius:var(--radius-md);border:1px solid var(--border);cursor:pointer;transition:transform .2s;" onclick="previewImage(\'' + proofUrl + '\')" onmouseover="this.style.transform=\'scale(1.01)\'" onmouseout="this.style.transform=\'scale(1)\'">' +
+      '<p style="font-size:.72rem;color:var(--success);margin:.75rem 0 0 0;"><i class="bi bi-info-circle"></i> Klik gambar untuk melihat ukuran penuh</p>' +
       '</div>';
   } else if (order.payment !== 'cod' && (order.status === 'Menunggu' || order.status === 'Diproses')) {
     // Show upload form for non-COD orders that haven't uploaded proof

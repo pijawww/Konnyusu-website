@@ -7,6 +7,11 @@ include __DIR__ . '/../data/products.php';
 
 requireLogin();
 
+if (isAdmin()) {
+    header('Location: ../admin/dashboard/dashboard.php');
+    exit;
+}
+
 $cartItems = getCartItems();
 $cartTotalItems = getCartCount();
 

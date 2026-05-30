@@ -1,10 +1,12 @@
 <?php
 // detail-product/detail-product.php
 session_start();
+require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/cart.php';
 include __DIR__ . '/../data/products.php';
 
 $cartTotalItems = getCartCount();
+$currentUser = getCurrentUser();
 
 $id      = isset($_GET['id']) ? (int)$_GET['id'] : 1;
 $product = findProduct($id);
@@ -323,9 +325,30 @@ $related = array_slice($related, 0, 4);
 </div>
 </div>
 
+<!-- Admin Warning Modal -->
+<div class="modal fade" id="adminWarningModal" tabindex="-1" aria-hidden="true" style="z-index:1060;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:20px;overflow:hidden;border:none;">
+      <div class="modal-body p-4 text-center">
+        <div style="width:70px;height:70px;background:#eff6ff;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;"><i class="bi bi-shield-lock-fill" style="font-size:2rem;color:#3b82f6;"></i></div>
+        <h5 style="font-family:var(--font-display);font-weight:800;color:var(--primary);margin-bottom:.5rem;">Akses Pembelian Ditutup</h5>
+        <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.5rem;">Akun admin hanya digunakan untuk mengelola toko. Untuk melakukan pembelian, silakan gunakan akun pelanggan.</p>
+        <div class="d-flex gap-2 justify-content-center">
+          <a href="../admin/dashboard/dashboard.php" class="btn-brand" style="text-decoration:none;padding:.6rem 1.2rem;">Ke Dashboard</a>
+          <button type="button" class="btn-outline-brand" data-bs-dismiss="modal" style="padding:.6rem 1.2rem;">Tutup</button>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="position:absolute;top:1rem;right:1rem;"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <?php include __DIR__ . '/../layouts/footer.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+const isAdmin = <?= !empty($currentUser) && ($currentUser['role'] ?? '') === 'admin' ? 'true' : 'false' ?>;
+const adminWarningModal = new bootstrap.Modal('#adminWarningModal');
+
 // Tab switching
 document.querySelectorAll('.info-tab').forEach(tab => {
   tab.addEventListener('click', function() {
@@ -348,9 +371,20 @@ function changeQty(d) {
 }
 // Buy Now - redirect to checkout
 function buyNow() {
+  if (isAdmin) {
+    adminWarningModal.show();
+    return;
+  }
   document.getElementById('redirectType').value = 'checkout';
   document.getElementById('addToCartForm').submit();
 }
+
+document.getElementById('addToCartForm')?.addEventListener('submit', function(e) {
+  if (isAdmin) {
+    e.preventDefault();
+    adminWarningModal.show();
+  }
+});
 // Image switch
 function switchImg(thumb) {
   document.querySelectorAll('.img-thumb').forEach(t => t.classList.remove('active'));

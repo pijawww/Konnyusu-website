@@ -10,6 +10,13 @@ function isLoggedIn(): bool {
 }
 
 /**
+ * Check if current session belongs to admin
+ */
+function isAdmin(): bool {
+    return isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
+}
+
+/**
  * Get current logged in user
  */
 function getCurrentUser(): ?array {

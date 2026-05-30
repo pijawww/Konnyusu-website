@@ -17,6 +17,16 @@ if (!isLoggedIn()) {
     exit;
 }
 
+if (isAdmin()) {
+    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Admin tidak dapat melakukan pembelian.']);
+        exit;
+    }
+    header('Location: ../admin/dashboard/dashboard.php');
+    exit;
+}
+
 $id = (int) ($_POST['id'] ?? $_GET['id'] ?? 0);
 $product = findProduct($id);
 

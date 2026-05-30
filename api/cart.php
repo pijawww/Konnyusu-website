@@ -11,6 +11,12 @@ require_once __DIR__ . '/../config/auth.php';
 
 session_start();
 
+if (!isLoggedIn() || isAdmin()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Akses keranjang tidak tersedia untuk admin']);
+    exit;
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 // Handle OPTIONS
